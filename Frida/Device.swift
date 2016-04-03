@@ -70,7 +70,7 @@ public class Device : CustomStringConvertible {
     deinit {
         let rawHandle = gpointer(handle)
         let handlers = [onSpawnedHandler, onOutputHandler, onLostHandler]
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
             }
@@ -108,7 +108,7 @@ public class Device : CustomStringConvertible {
     }
 
     public func getFrontmostApplication(completionHandler: GetFrontmostApplicationComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_get_frontmost_application(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<GetFrontmostApplicationComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -116,23 +116,23 @@ public class Device : CustomStringConvertible {
                 let rawApplication = frida_device_get_frontmost_application_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
                 let application: ApplicationDetails? = rawApplication != nil ? ApplicationDetails(handle: rawApplication) : nil
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { application }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { application }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<GetFrontmostApplicationComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func enumerateApplications(completionHandler: EnumerateApplicationsComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_enumerate_applications(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateApplicationsComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -140,8 +140,8 @@ public class Device : CustomStringConvertible {
                 let rawApplications = frida_device_enumerate_applications_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
@@ -154,15 +154,15 @@ public class Device : CustomStringConvertible {
                 }
                 g_object_unref(gpointer(rawApplications))
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { applications }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { applications }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnumerateApplicationsComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func enumerateProcesses(completionHandler: EnumerateProcessesComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_enumerate_processes(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateProcessesComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -170,8 +170,8 @@ public class Device : CustomStringConvertible {
                 let rawProcesses = frida_device_enumerate_processes_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
@@ -184,15 +184,15 @@ public class Device : CustomStringConvertible {
                 }
                 g_object_unref(gpointer(rawProcesses))
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { processes }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { processes }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnumerateProcessesComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func enableSpawnGating(completionHandler: EnableSpawnGatingComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_enable_spawn_gating(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnableSpawnGatingComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -200,21 +200,21 @@ public class Device : CustomStringConvertible {
                 frida_device_enable_spawn_gating_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnableSpawnGatingComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func disableSpawnGating(completionHandler: DisableSpawnGatingComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_disable_spawn_gating(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DisableSpawnGatingComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -222,21 +222,21 @@ public class Device : CustomStringConvertible {
                 frida_device_disable_spawn_gating_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DisableSpawnGatingComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func enumeratePendingSpawns(completionHandler: EnumeratePendingSpawnsComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_enumerate_pending_spawns(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumeratePendingSpawnsComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -244,8 +244,8 @@ public class Device : CustomStringConvertible {
                 let rawSpawns = frida_device_enumerate_pending_spawns_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
@@ -258,15 +258,15 @@ public class Device : CustomStringConvertible {
                 }
                 g_object_unref(gpointer(rawSpawns))
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { spawns }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { spawns }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnumeratePendingSpawnsComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func spawn(path: String, argv: [String], envp: [String]? = nil, completionHandler: SpawnComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             let rawArgv = unsafeBitCast(g_malloc0(gsize((argv.count + 1) * sizeof(gpointer))), UnsafeMutablePointer<UnsafeMutablePointer<gchar>>.self)
             for (index, arg) in argv.enumerate() {
                 rawArgv.advancedBy(index).memory = g_strdup(arg)
@@ -292,14 +292,14 @@ public class Device : CustomStringConvertible {
                 let pid = frida_device_spawn_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { UInt(pid) }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { UInt(pid) }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<SpawnComplete>(completionHandler)).toOpaque()))
 
@@ -309,7 +309,7 @@ public class Device : CustomStringConvertible {
     }
 
     public func input(pid: UInt, data: NSData, completionHandler: InputComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             withExtendedLifetime(data) {
                 frida_device_input(self.handle, guint(pid), UnsafeMutablePointer<guint8>(data.bytes), gint(data.length), { source, result, data in
                     let operation = Unmanaged<AsyncOperation<InputComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
@@ -318,14 +318,14 @@ public class Device : CustomStringConvertible {
                     frida_device_input_finish(COpaquePointer(source), result, &rawError)
                     if rawError != nil {
                         let error = Marshal.takeNativeError(rawError)
-                        Runtime.scheduleOnMainThread() {
-                            operation.completionHandler() { throw error }
+                        Runtime.scheduleOnMainThread {
+                            operation.completionHandler { throw error }
                         }
                         return
                     }
 
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { true }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { true }
                     }
                 }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<InputComplete>(completionHandler)).toOpaque()))
             }
@@ -333,7 +333,7 @@ public class Device : CustomStringConvertible {
     }
 
     public func resume(pid: UInt, completionHandler: ResumeComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_resume(self.handle, guint(pid), { source, result, data in
                 let operation = Unmanaged<AsyncOperation<ResumeComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -341,21 +341,21 @@ public class Device : CustomStringConvertible {
                 frida_device_resume_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<ResumeComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func kill(pid: UInt, completionHandler: KillComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_kill(self.handle, guint(pid), { source, result, data in
                 let operation = Unmanaged<AsyncOperation<KillComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -363,21 +363,21 @@ public class Device : CustomStringConvertible {
                 frida_device_kill_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<KillComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func attach(pid: UInt, completionHandler: AttachComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_attach(self.handle, guint(pid), { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -385,16 +385,16 @@ public class Device : CustomStringConvertible {
                 let rawSession = frida_device_attach_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
                 let session = Session(handle: rawSession)
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { session }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { session }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<AttachComplete>(completionHandler)).toOpaque()))
         }
@@ -407,7 +407,7 @@ public class Device : CustomStringConvertible {
         let spawn = SpawnDetails(handle: rawSpawn)
 
         if let device = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 device.delegate?.device(device, didSpawn: spawn)
             }
         }
@@ -419,7 +419,7 @@ public class Device : CustomStringConvertible {
         let data = NSData(bytes: rawData, length: Int(rawDataSize))
 
         if let device = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 device.delegate?.device(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
             }
         }
@@ -429,7 +429,7 @@ public class Device : CustomStringConvertible {
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
 
         if let device = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 device.delegate?.deviceLost(device)
             }
         }

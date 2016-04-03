@@ -34,7 +34,7 @@ public class Session : CustomStringConvertible {
     deinit {
         let rawHandle = gpointer(handle)
         let handlers = [onDetachedHandler]
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
             }
@@ -51,13 +51,13 @@ public class Session : CustomStringConvertible {
     }
 
     public func detach(completionHandler: DetachComplete = {}) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_session_detach(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DetachComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
                 frida_session_detach_finish(COpaquePointer(source), result)
 
-                Runtime.scheduleOnMainThread() {
+                Runtime.scheduleOnMainThread {
                     operation.completionHandler()
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DetachComplete>(completionHandler)).toOpaque()))
@@ -65,7 +65,7 @@ public class Session : CustomStringConvertible {
     }
 
     public func createScript(name: String, source: String, completionHandler: CreateScriptComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_session_create_script(self.handle, name, source, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<CreateScriptComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -73,23 +73,23 @@ public class Session : CustomStringConvertible {
                 let rawScript = frida_session_create_script_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
                 let script = Script(handle: rawScript)
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { script }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { script }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<CreateScriptComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func enableDebugger(port: UInt16 = 0, completionHandler: EnableDebuggerComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_session_enable_debugger(self.handle, port, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnableDebuggerComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -97,21 +97,21 @@ public class Session : CustomStringConvertible {
                 frida_session_enable_debugger_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnableDebuggerComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func disableDebugger(completionHandler: DisableDebuggerComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_session_disable_debugger(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DisableDebuggerComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -119,21 +119,21 @@ public class Session : CustomStringConvertible {
                 frida_session_disable_debugger_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DisableDebuggerComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func disableJit(completionHandler: DisableJitComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_session_disable_jit(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DisableJitComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -141,14 +141,14 @@ public class Session : CustomStringConvertible {
                 frida_session_disable_jit_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DisableJitComplete>(completionHandler)).toOpaque()))
         }
@@ -158,7 +158,7 @@ public class Session : CustomStringConvertible {
         let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
 
         if let session = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 session.delegate?.sessionDetached(session)
             }
         }

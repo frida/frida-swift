@@ -43,7 +43,7 @@ public class DeviceManager {
     deinit {
         let rawHandle = gpointer(handle)
         let handlers = [onChangedHandler, onAddedHandler, onRemovedHandler]
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
             }
@@ -52,13 +52,13 @@ public class DeviceManager {
     }
 
     public func close(completionHandler: CloseComplete = {}) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_manager_close(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<CloseComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
                 frida_device_manager_close_finish(COpaquePointer(source), result)
 
-                Runtime.scheduleOnMainThread() {
+                Runtime.scheduleOnMainThread {
                     operation.completionHandler()
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<CloseComplete>(completionHandler)).toOpaque()))
@@ -66,7 +66,7 @@ public class DeviceManager {
     }
 
     public func enumerateDevices(completionHandler: EnumerateDevicesComplete) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_manager_enumerate_devices(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateDevicesComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -74,8 +74,8 @@ public class DeviceManager {
                 let rawDevices = frida_device_manager_enumerate_devices_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
@@ -88,15 +88,15 @@ public class DeviceManager {
                 }
                 g_object_unref(gpointer(rawDevices))
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { devices }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { devices }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnumerateDevicesComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func addRemoteDevice(host: String, completionHandler: AddRemoteDeviceComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_manager_add_remote_device(self.handle, host, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -104,23 +104,23 @@ public class DeviceManager {
                 let rawDevice = frida_device_manager_add_remote_device_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
                 let device = Device(handle: rawDevice)
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { device }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { device }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<AddRemoteDeviceComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func removeRemoteDevice(host: String, completionHandler: RemoveRemoteDeviceComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_device_manager_remove_remote_device(self.handle, host, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<RemoveRemoteDeviceComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -128,14 +128,14 @@ public class DeviceManager {
                 frida_device_manager_remove_remote_device_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<RemoveRemoteDeviceComplete>(completionHandler)).toOpaque()))
         }
@@ -145,7 +145,7 @@ public class DeviceManager {
         let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
 
         if let manager = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 manager.delegate?.deviceManagerDidChangeDevices(manager)
             }
         }
@@ -158,7 +158,7 @@ public class DeviceManager {
         let device = Device(handle: rawDevice)
 
         if let manager = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 manager.delegate?.deviceManager(manager, didAddDevice: device)
             }
         }
@@ -171,7 +171,7 @@ public class DeviceManager {
         let device = Device(handle: rawDevice)
 
         if let manager = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 manager.delegate?.deviceManager(manager, didRemoveDevice: device)
             }
         }

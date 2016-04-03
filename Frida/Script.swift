@@ -35,7 +35,7 @@ public class Script : CustomStringConvertible {
     deinit {
         let rawHandle = gpointer(handle)
         let handlers = [onDestroyedHandler, onMessageHandler]
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
             }
@@ -48,7 +48,7 @@ public class Script : CustomStringConvertible {
     }
 
     public func load(completionHandler: LoadComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_script_load(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<LoadComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -56,21 +56,21 @@ public class Script : CustomStringConvertible {
                 frida_script_load_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<LoadComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func unload(completionHandler: UnloadComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             frida_script_unload(self.handle, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<UnloadComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
 
@@ -78,21 +78,21 @@ public class Script : CustomStringConvertible {
                 frida_script_unload_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<UnloadComplete>(completionHandler)).toOpaque()))
         }
     }
 
     public func postMessage(message: AnyObject, completionHandler: PostMessageComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread() {
+        Runtime.scheduleOnFridaThread {
             let operation = AsyncOperation<PostMessageComplete>(completionHandler)
 
             var rawMessage: String
@@ -100,8 +100,8 @@ public class Script : CustomStringConvertible {
                 let data = try NSJSONSerialization.dataWithJSONObject(message, options: NSJSONWritingOptions())
                 rawMessage = String(data: data, encoding: NSUTF8StringEncoding)!
             } catch {
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { throw error }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { throw error }
                 }
                 return;
             }
@@ -113,14 +113,14 @@ public class Script : CustomStringConvertible {
                 frida_script_post_message_finish(COpaquePointer(source), result, &rawError)
                 if rawError != nil {
                     let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread() {
-                        operation.completionHandler() { throw error }
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
                     }
                     return
                 }
 
-                Runtime.scheduleOnMainThread() {
-                    operation.completionHandler() { true }
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
                 }
             }, UnsafeMutablePointer(Unmanaged.passRetained(operation).toOpaque()))
         }
@@ -130,7 +130,7 @@ public class Script : CustomStringConvertible {
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
 
         if let script = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 script.delegate?.scriptDestroyed(script)
             }
         }
@@ -144,7 +144,7 @@ public class Script : CustomStringConvertible {
         let data = NSData(bytes: rawData, length: Int(rawDataSize))
 
         if let script = connection.instance {
-            Runtime.scheduleOnMainThread() {
+            Runtime.scheduleOnMainThread {
                 script.delegate?.script(script, didReceiveMessage: message, withData: data)
             }
         }
