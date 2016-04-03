@@ -1,0 +1,4 @@
+module CFrida {
+    header "frida-core.h"
+    export *
+}

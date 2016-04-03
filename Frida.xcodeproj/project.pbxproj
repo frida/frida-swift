@@ -1,0 +1,509 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0C2573901CAD790B0075F77A /* frida-core.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C25738D1CAD790B0075F77A /* frida-core.h */; };
+		0C2573911CAD790B0075F77A /* libfrida-core.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C25738E1CAD790B0075F77A /* libfrida-core.a */; };
+		0C2573931CAD990A0075F77A /* Device.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2573921CAD990A0075F77A /* Device.swift */; };
+		0C2573951CADA58B0075F77A /* Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2573941CADA58B0075F77A /* Error.swift */; };
+		0C2573971CADB7C60075F77A /* Runtime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2573961CADB7C60075F77A /* Runtime.swift */; };
+		0C2573991CADBF560075F77A /* Marshal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C2573981CADBF560075F77A /* Marshal.swift */; };
+		0C25739B1CADCFD50075F77A /* ProcessDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C25739A1CADCFD50075F77A /* ProcessDetails.swift */; };
+		0C25739D1CADD4480075F77A /* AsyncOperation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C25739C1CADD4480075F77A /* AsyncOperation.swift */; };
+		0C25739F1CADD7630075F77A /* ApplicationDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C25739E1CADD7630075F77A /* ApplicationDetails.swift */; };
+		0C3DE4E81CB1A9530091AC08 /* DeviceManagerDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4E71CB1A9530091AC08 /* DeviceManagerDelegate.swift */; };
+		0C3DE4EA1CB1B4570091AC08 /* SpawnDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */; };
+		0C3DE4EC1CB1C3F60091AC08 /* DeviceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4EB1CB1C3F60091AC08 /* DeviceDelegate.swift */; };
+		0C3DE4EE1CB1D3C70091AC08 /* SessionDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */; };
+		0C5A27BD1CA6F127004D820F /* DeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C5A27BC1CA6F127004D820F /* DeviceManager.swift */; };
+		0C9289381CA6F06C00FBA302 /* Frida.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C9289371CA6F06C00FBA302 /* Frida.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		0C92893F1CA6F06C00FBA302 /* Frida.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C9289341CA6F06C00FBA302 /* Frida.framework */; };
+		0C9289441CA6F06C00FBA302 /* FridaTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C9289431CA6F06C00FBA302 /* FridaTests.swift */; };
+		0CA4A1301CADF094006A32C4 /* Session.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A12F1CADF094006A32C4 /* Session.swift */; };
+		0CA4A1321CADF2B1006A32C4 /* Script.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1311CADF2B1006A32C4 /* Script.swift */; };
+		0CA4A1341CADFAD4006A32C4 /* ScriptDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */; };
+		0CA4A1361CADFEE4006A32C4 /* SignalConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0C9289401CA6F06C00FBA302 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0C92892B1CA6F06C00FBA302 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 0C9289331CA6F06C00FBA302;
+			remoteInfo = Frida;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0C25738D1CAD790B0075F77A /* frida-core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "frida-core.h"; path = "mac-x86_64/frida-core.h"; sourceTree = "<group>"; };
+		0C25738E1CAD790B0075F77A /* libfrida-core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libfrida-core.a"; path = "mac-x86_64/libfrida-core.a"; sourceTree = "<group>"; };
+		0C25738F1CAD790B0075F77A /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = module.modulemap; path = "mac-x86_64/module.modulemap"; sourceTree = "<group>"; };
+		0C2573921CAD990A0075F77A /* Device.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
+		0C2573941CADA58B0075F77A /* Error.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
+		0C2573961CADB7C60075F77A /* Runtime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Runtime.swift; sourceTree = "<group>"; };
+		0C2573981CADBF560075F77A /* Marshal.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Marshal.swift; sourceTree = "<group>"; };
+		0C25739A1CADCFD50075F77A /* ProcessDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ProcessDetails.swift; sourceTree = "<group>"; };
+		0C25739C1CADD4480075F77A /* AsyncOperation.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AsyncOperation.swift; sourceTree = "<group>"; };
+		0C25739E1CADD7630075F77A /* ApplicationDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ApplicationDetails.swift; sourceTree = "<group>"; };
+		0C3DE4E71CB1A9530091AC08 /* DeviceManagerDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceManagerDelegate.swift; sourceTree = "<group>"; };
+		0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpawnDetails.swift; sourceTree = "<group>"; };
+		0C3DE4EB1CB1C3F60091AC08 /* DeviceDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceDelegate.swift; sourceTree = "<group>"; };
+		0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SessionDelegate.swift; sourceTree = "<group>"; };
+		0C5A27BC1CA6F127004D820F /* DeviceManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
+		0C9289341CA6F06C00FBA302 /* Frida.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Frida.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C9289371CA6F06C00FBA302 /* Frida.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Frida.h; sourceTree = "<group>"; };
+		0C9289391CA6F06C00FBA302 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0C92893E1CA6F06C00FBA302 /* FridaTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FridaTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		0C9289431CA6F06C00FBA302 /* FridaTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FridaTests.swift; sourceTree = "<group>"; };
+		0C9289451CA6F06C00FBA302 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0CA4A12F1CADF094006A32C4 /* Session.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Session.swift; sourceTree = "<group>"; };
+		0CA4A1311CADF2B1006A32C4 /* Script.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Script.swift; sourceTree = "<group>"; };
+		0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ScriptDelegate.swift; sourceTree = "<group>"; };
+		0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SignalConnection.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		0C9289301CA6F06C00FBA302 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C2573911CAD790B0075F77A /* libfrida-core.a in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0C92893B1CA6F06C00FBA302 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C92893F1CA6F06C00FBA302 /* Frida.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0C5A27C81CA6FD85004D820F /* CFrida */ = {
+			isa = PBXGroup;
+			children = (
+				0C25738D1CAD790B0075F77A /* frida-core.h */,
+				0C25738E1CAD790B0075F77A /* libfrida-core.a */,
+				0C25738F1CAD790B0075F77A /* module.modulemap */,
+			);
+			path = CFrida;
+			sourceTree = "<group>";
+		};
+		0C92892A1CA6F06C00FBA302 = {
+			isa = PBXGroup;
+			children = (
+				0C5A27C81CA6FD85004D820F /* CFrida */,
+				0C9289361CA6F06C00FBA302 /* Frida */,
+				0C9289421CA6F06C00FBA302 /* FridaTests */,
+				0C9289351CA6F06C00FBA302 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		0C9289351CA6F06C00FBA302 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				0C9289341CA6F06C00FBA302 /* Frida.framework */,
+				0C92893E1CA6F06C00FBA302 /* FridaTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		0C9289361CA6F06C00FBA302 /* Frida */ = {
+			isa = PBXGroup;
+			children = (
+				0C2573941CADA58B0075F77A /* Error.swift */,
+				0C9289371CA6F06C00FBA302 /* Frida.h */,
+				0C9289391CA6F06C00FBA302 /* Info.plist */,
+				0C5A27BC1CA6F127004D820F /* DeviceManager.swift */,
+				0C3DE4E71CB1A9530091AC08 /* DeviceManagerDelegate.swift */,
+				0C2573921CAD990A0075F77A /* Device.swift */,
+				0C3DE4EB1CB1C3F60091AC08 /* DeviceDelegate.swift */,
+				0CA4A12F1CADF094006A32C4 /* Session.swift */,
+				0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */,
+				0CA4A1311CADF2B1006A32C4 /* Script.swift */,
+				0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */,
+				0C25739E1CADD7630075F77A /* ApplicationDetails.swift */,
+				0C25739A1CADCFD50075F77A /* ProcessDetails.swift */,
+				0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */,
+				0C2573961CADB7C60075F77A /* Runtime.swift */,
+				0C2573981CADBF560075F77A /* Marshal.swift */,
+				0C25739C1CADD4480075F77A /* AsyncOperation.swift */,
+				0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */,
+			);
+			path = Frida;
+			sourceTree = "<group>";
+		};
+		0C9289421CA6F06C00FBA302 /* FridaTests */ = {
+			isa = PBXGroup;
+			children = (
+				0C9289431CA6F06C00FBA302 /* FridaTests.swift */,
+				0C9289451CA6F06C00FBA302 /* Info.plist */,
+			);
+			path = FridaTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXHeadersBuildPhase section */
+		0C9289311CA6F06C00FBA302 /* Headers */ = {
+			isa = PBXHeadersBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C2573901CAD790B0075F77A /* frida-core.h in Headers */,
+				0C9289381CA6F06C00FBA302 /* Frida.h in Headers */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXHeadersBuildPhase section */
+
+/* Begin PBXNativeTarget section */
+		0C9289331CA6F06C00FBA302 /* Frida */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C9289481CA6F06C00FBA302 /* Build configuration list for PBXNativeTarget "Frida" */;
+			buildPhases = (
+				0C92892F1CA6F06C00FBA302 /* Sources */,
+				0C9289301CA6F06C00FBA302 /* Frameworks */,
+				0C9289311CA6F06C00FBA302 /* Headers */,
+				0C9289321CA6F06C00FBA302 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Frida;
+			productName = Frida;
+			productReference = 0C9289341CA6F06C00FBA302 /* Frida.framework */;
+			productType = "com.apple.product-type.framework";
+		};
+		0C92893D1CA6F06C00FBA302 /* FridaTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0C92894B1CA6F06C00FBA302 /* Build configuration list for PBXNativeTarget "FridaTests" */;
+			buildPhases = (
+				0C92893A1CA6F06C00FBA302 /* Sources */,
+				0C92893B1CA6F06C00FBA302 /* Frameworks */,
+				0C92893C1CA6F06C00FBA302 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0C9289411CA6F06C00FBA302 /* PBXTargetDependency */,
+			);
+			name = FridaTests;
+			productName = FridaTests;
+			productReference = 0C92893E1CA6F06C00FBA302 /* FridaTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		0C92892B1CA6F06C00FBA302 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 0730;
+				LastUpgradeCheck = 0730;
+				ORGANIZATIONNAME = Frida;
+				TargetAttributes = {
+					0C9289331CA6F06C00FBA302 = {
+						CreatedOnToolsVersion = 7.3;
+					};
+					0C92893D1CA6F06C00FBA302 = {
+						CreatedOnToolsVersion = 7.3;
+					};
+				};
+			};
+			buildConfigurationList = 0C92892E1CA6F06C00FBA302 /* Build configuration list for PBXProject "Frida" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = 0C92892A1CA6F06C00FBA302;
+			productRefGroup = 0C9289351CA6F06C00FBA302 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				0C9289331CA6F06C00FBA302 /* Frida */,
+				0C92893D1CA6F06C00FBA302 /* FridaTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		0C9289321CA6F06C00FBA302 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0C92893C1CA6F06C00FBA302 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0C92892F1CA6F06C00FBA302 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C2573991CADBF560075F77A /* Marshal.swift in Sources */,
+				0CA4A1341CADFAD4006A32C4 /* ScriptDelegate.swift in Sources */,
+				0C3DE4E81CB1A9530091AC08 /* DeviceManagerDelegate.swift in Sources */,
+				0C2573971CADB7C60075F77A /* Runtime.swift in Sources */,
+				0C5A27BD1CA6F127004D820F /* DeviceManager.swift in Sources */,
+				0C2573951CADA58B0075F77A /* Error.swift in Sources */,
+				0C2573931CAD990A0075F77A /* Device.swift in Sources */,
+				0C25739F1CADD7630075F77A /* ApplicationDetails.swift in Sources */,
+				0C25739B1CADCFD50075F77A /* ProcessDetails.swift in Sources */,
+				0C25739D1CADD4480075F77A /* AsyncOperation.swift in Sources */,
+				0C3DE4EC1CB1C3F60091AC08 /* DeviceDelegate.swift in Sources */,
+				0C3DE4EA1CB1B4570091AC08 /* SpawnDetails.swift in Sources */,
+				0CA4A1321CADF2B1006A32C4 /* Script.swift in Sources */,
+				0CA4A1301CADF094006A32C4 /* Session.swift in Sources */,
+				0CA4A1361CADFEE4006A32C4 /* SignalConnection.swift in Sources */,
+				0C3DE4EE1CB1D3C70091AC08 /* SessionDelegate.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		0C92893A1CA6F06C00FBA302 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0C9289441CA6F06C00FBA302 /* FridaTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0C9289411CA6F06C00FBA302 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 0C9289331CA6F06C00FBA302 /* Frida */;
+			targetProxy = 0C9289401CA6F06C00FBA302 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0C9289461CA6F06C00FBA302 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Debug;
+		};
+		0C9289471CA6F06C00FBA302 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+				VERSIONING_SYSTEM = "apple-generic";
+				VERSION_INFO_PREFIX = "";
+			};
+			name = Release;
+		};
+		0C9289491CA6F06C00FBA302 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_VERSION = A;
+				HEADER_SEARCH_PATHS = "";
+				INFOPLIST_FILE = Frida/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"CFrida/mac-x86_64",
+				);
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-lresolv",
+					"-Wl,-no_compact_unwind",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = "CFrida/mac-x86_64";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		0C92894A1CA6F06C00FBA302 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				COMBINE_HIDPI_IMAGES = YES;
+				DEFINES_MODULE = YES;
+				DYLIB_COMPATIBILITY_VERSION = 1;
+				DYLIB_CURRENT_VERSION = 1;
+				DYLIB_INSTALL_NAME_BASE = "@rpath";
+				FRAMEWORK_SEARCH_PATHS = "";
+				FRAMEWORK_VERSION = A;
+				HEADER_SEARCH_PATHS = "";
+				INFOPLIST_FILE = Frida/Info.plist;
+				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"CFrida/mac-x86_64",
+				);
+				OTHER_CFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-lresolv",
+					"-Wl,-no_compact_unwind",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_INCLUDE_PATHS = "CFrida/mac-x86_64";
+			};
+			name = Release;
+		};
+		0C92894C1CA6F06C00FBA302 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FridaTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = re.frida.FridaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		0C92894D1CA6F06C00FBA302 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = FridaTests/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/../Frameworks";
+				PRODUCT_BUNDLE_IDENTIFIER = re.frida.FridaTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		0C92892E1CA6F06C00FBA302 /* Build configuration list for PBXProject "Frida" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C9289461CA6F06C00FBA302 /* Debug */,
+				0C9289471CA6F06C00FBA302 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0C9289481CA6F06C00FBA302 /* Build configuration list for PBXNativeTarget "Frida" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C9289491CA6F06C00FBA302 /* Debug */,
+				0C92894A1CA6F06C00FBA302 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		0C92894B1CA6F06C00FBA302 /* Build configuration list for PBXNativeTarget "FridaTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C92894C1CA6F06C00FBA302 /* Debug */,
+				0C92894D1CA6F06C00FBA302 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 0C92892B1CA6F06C00FBA302 /* Project object */;
+}
