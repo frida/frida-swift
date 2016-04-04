@@ -251,10 +251,10 @@ public class Device : CustomStringConvertible {
                 }
 
                 var spawns = [SpawnDetails]()
-                let numberOfSpawns = frida_process_list_size(rawSpawns)
+                let numberOfSpawns = frida_spawn_list_size(rawSpawns)
                 for index in 0..<numberOfSpawns {
-                    let process = SpawnDetails(handle: frida_process_list_get(rawSpawns, index))
-                    spawns.append(process)
+                    let spawn = SpawnDetails(handle: frida_spawn_list_get(rawSpawns, index))
+                    spawns.append(spawn)
                 }
                 g_object_unref(gpointer(rawSpawns))
 
