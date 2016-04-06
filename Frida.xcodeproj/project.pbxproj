@@ -410,6 +410,7 @@
 				OTHER_LDFLAGS = (
 					"-lresolv",
 					"-Wl,-no_compact_unwind",
+					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -443,6 +444,7 @@
 				OTHER_LDFLAGS = (
 					"-lresolv",
 					"-Wl,-no_compact_unwind",
+					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
