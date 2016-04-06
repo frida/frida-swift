@@ -48,7 +48,7 @@ class Marshal {
         let height = Int(frida_icon_get_height(icon))
         let bitsPerComponent = 8
         let bitsPerPixel = 4 * bitsPerComponent
-        let bytesPerRow = width * bitsPerPixel
+        let bytesPerRow = width * (bitsPerPixel / 8)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
         let bitmapInfo: CGBitmapInfo = [.ByteOrder32Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.PremultipliedLast.rawValue)]
 
