@@ -32,4 +32,16 @@ public class SpawnDetails: NSObject, NSCopying {
             return "Frida.SpawnDetails(pid: \(pid))"
         }
     }
+
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let details = object as? SpawnDetails {
+            return details.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
 }

@@ -45,4 +45,16 @@ public class ApplicationDetails: NSObject, NSCopying {
             return "Frida.ApplicationDetails(identifier: \"\(identifier)\", name: \"\(name)\")"
         }
     }
+
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let details = object as? ApplicationDetails {
+            return details.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
 }

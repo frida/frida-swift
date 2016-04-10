@@ -115,6 +115,18 @@ public class Device: NSObject, NSCopying {
         return "Frida.Device(id: \"\(id)\", name: \"\(name)\", kind: \"\(kind)\")"
     }
 
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let device = object as? Device {
+            return device.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
+
     public func getFrontmostApplication(completionHandler: GetFrontmostApplicationComplete) {
         Runtime.scheduleOnFridaThread {
             frida_device_get_frontmost_application(self.handle, { source, result, data in

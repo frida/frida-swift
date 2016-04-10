@@ -55,6 +55,18 @@ public class Script: NSObject, NSCopying {
         return "Frida.Script()"
     }
 
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let script = object as? Script {
+            return script.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
+
     public func load(completionHandler: LoadComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_script_load(self.handle, { source, result, data in

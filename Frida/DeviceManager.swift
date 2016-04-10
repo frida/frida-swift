@@ -63,6 +63,22 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
+    public override var description: String {
+        return "Frida.DeviceManager()"
+    }
+
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let manager = object as? DeviceManager {
+            return manager.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
+
     public func close(completionHandler: CloseComplete = {}) {
         Runtime.scheduleOnFridaThread {
             frida_device_manager_close(self.handle, { source, result, data in

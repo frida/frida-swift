@@ -58,6 +58,18 @@ public class Session: NSObject, NSCopying {
         return "Frida.Session(pid: \(pid))"
     }
 
+    public override func isEqual(object: AnyObject?) -> Bool {
+        if let session = object as? Session {
+            return session.handle == handle
+        } else {
+            return false
+        }
+    }
+
+    public override var hash: Int {
+        return handle.hashValue
+    }
+
     public func detach(completionHandler: DetachComplete = {}) {
         Runtime.scheduleOnFridaThread {
             frida_session_detach(self.handle, { source, result, data in
