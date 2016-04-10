@@ -1,5 +1,6 @@
+@objc(FridaDeviceManagerDelegate)
 public protocol DeviceManagerDelegate {
-    func deviceManagerDidChangeDevices(manager: DeviceManager)
-    func deviceManager(manager: DeviceManager, didAddDevice device: Device)
-    func deviceManager(manager: DeviceManager, didRemoveDevice device: Device)
+    optional func deviceManagerDidChangeDevices(manager: DeviceManager)
+    optional func deviceManager(manager: DeviceManager, didAddDevice device: Device)
+    optional func deviceManager(manager: DeviceManager, didRemoveDevice device: Device)
 }

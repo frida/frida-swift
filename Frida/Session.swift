@@ -1,6 +1,7 @@
 import CFrida
 
-public class Session : CustomStringConvertible {
+@objc(FridaSession)
+public class Session: NSObject, NSCopying {
     public var delegate: SessionDelegate?
 
     public typealias DetachComplete = () -> Void
@@ -25,10 +26,17 @@ public class Session : CustomStringConvertible {
     init(handle: COpaquePointer) {
         self.handle = handle
 
+        super.init()
+
         let rawHandle = gpointer(handle)
         onDetachedHandler = g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, GCallback.self),
                                                   gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                   releaseConnection, GConnectFlags(0))
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return Session(handle: handle)
     }
 
     deinit {
@@ -46,7 +54,7 @@ public class Session : CustomStringConvertible {
         return UInt(frida_session_get_pid(handle))
     }
 
-    public var description: String {
+    public override var description: String {
         return "Frida.Session(pid: \(pid))"
     }
 

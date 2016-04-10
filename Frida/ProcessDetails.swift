@@ -1,10 +1,16 @@
 import CFrida
 
-public class ProcessDetails : CustomStringConvertible {
+@objc(FridaProcessDetails)
+public class ProcessDetails: NSObject, NSCopying {
     private let handle: COpaquePointer
 
     init(handle: COpaquePointer) {
         self.handle = handle
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return ProcessDetails(handle: handle)
     }
 
     deinit {
@@ -27,7 +33,7 @@ public class ProcessDetails : CustomStringConvertible {
         return Marshal.imageFromIcon(frida_process_get_large_icon(handle))
     }
 
-    public var description: String {
+    public override var description: String {
         return "Frida.ProcessDetails(pid: \(pid), name: \"\(name)\")"
     }
 }

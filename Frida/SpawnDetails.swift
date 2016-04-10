@@ -1,10 +1,16 @@
 import CFrida
 
-public class SpawnDetails : CustomStringConvertible {
+@objc(FridaSpawnDetails)
+public class SpawnDetails: NSObject, NSCopying {
     private let handle: COpaquePointer
 
     init(handle: COpaquePointer) {
         self.handle = handle
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return SpawnDetails(handle: handle)
     }
 
     deinit {
@@ -19,7 +25,7 @@ public class SpawnDetails : CustomStringConvertible {
         return String.fromCString(frida_spawn_get_identifier(handle))
     }
 
-    public var description: String {
+    public override var description: String {
         if let identifier = self.identifier {
             return "Frida.SpawnDetails(pid: \(pid), identifier: \"\(identifier)\")"
         } else {

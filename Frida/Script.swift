@@ -1,6 +1,7 @@
 import CFrida
 
-public class Script : CustomStringConvertible {
+@objc(FridaScript)
+public class Script: NSObject, NSCopying {
     public var delegate: ScriptDelegate?
 
     public typealias LoadComplete = (result: LoadResult) -> Void
@@ -23,6 +24,8 @@ public class Script : CustomStringConvertible {
     init(handle: COpaquePointer) {
         self.handle = handle
 
+        super.init()
+
         let rawHandle = gpointer(handle)
         onDestroyedHandler = g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, GCallback.self),
                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
@@ -30,6 +33,11 @@ public class Script : CustomStringConvertible {
         onMessageHandler = g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, GCallback.self),
                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                  releaseConnection, GConnectFlags(0))
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return Script(handle: handle)
     }
 
     deinit {
@@ -43,7 +51,7 @@ public class Script : CustomStringConvertible {
         }
     }
 
-    public var description: String {
+    public override var description: String {
         return "Frida.Script()"
     }
 
@@ -131,7 +139,7 @@ public class Script : CustomStringConvertible {
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
-                script.delegate?.scriptDestroyed(script)
+                script.delegate?.scriptDestroyed?(script)
             }
         }
     }
@@ -145,7 +153,7 @@ public class Script : CustomStringConvertible {
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
-                script.delegate?.script(script, didReceiveMessage: message, withData: data)
+                script.delegate?.script?(script, didReceiveMessage: message, withData: data)
             }
         }
     }

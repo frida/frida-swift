@@ -1,10 +1,16 @@
 import CFrida
 
-public class ApplicationDetails : CustomStringConvertible {
+@objc(FridaApplicationDetails)
+public class ApplicationDetails: NSObject, NSCopying {
     private let handle: COpaquePointer
 
     init(handle: COpaquePointer) {
         self.handle = handle
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return ApplicationDetails(handle: handle)
     }
 
     deinit {
@@ -32,7 +38,7 @@ public class ApplicationDetails : CustomStringConvertible {
         return Marshal.imageFromIcon(frida_application_get_large_icon(handle))
     }
 
-    public var description: String {
+    public override var description: String {
         if let pid = self.pid {
             return "Frida.ApplicationDetails(identifier: \"\(identifier)\", name: \"\(name)\", pid: \(pid))"
         } else {

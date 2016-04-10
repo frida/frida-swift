@@ -1,6 +1,7 @@
 import CFrida
 
-public class DeviceManager {
+@objc(FridaDeviceManager)
+public class DeviceManager: NSObject, NSCopying {
     public var delegate: DeviceManagerDelegate?
 
     public typealias CloseComplete = () -> Void
@@ -23,10 +24,16 @@ public class DeviceManager {
     private var onAddedHandler: gulong = 0
     private var onRemovedHandler: gulong = 0
 
-    public init() {
+    public convenience override init() {
         frida_init()
 
-        handle = frida_device_manager_new()
+        self.init(handle: frida_device_manager_new())
+    }
+
+    init(handle: COpaquePointer) {
+        self.handle = handle
+
+        super.init()
 
         let rawHandle = gpointer(handle)
         onChangedHandler = g_signal_connect_data(rawHandle, "changed", unsafeBitCast(onChanged, GCallback.self),
@@ -38,6 +45,11 @@ public class DeviceManager {
         onRemovedHandler = g_signal_connect_data(rawHandle, "removed", unsafeBitCast(onRemoved, GCallback.self),
                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                  releaseConnection, GConnectFlags(0))
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return DeviceManager(handle: handle)
     }
 
     deinit {
@@ -146,7 +158,7 @@ public class DeviceManager {
 
         if let manager = connection.instance {
             Runtime.scheduleOnMainThread {
-                manager.delegate?.deviceManagerDidChangeDevices(manager)
+                manager.delegate?.deviceManagerDidChangeDevices?(manager)
             }
         }
     }
@@ -159,7 +171,7 @@ public class DeviceManager {
 
         if let manager = connection.instance {
             Runtime.scheduleOnMainThread {
-                manager.delegate?.deviceManager(manager, didAddDevice: device)
+                manager.delegate?.deviceManager?(manager, didAddDevice: device)
             }
         }
     }
@@ -172,7 +184,7 @@ public class DeviceManager {
 
         if let manager = connection.instance {
             Runtime.scheduleOnMainThread {
-                manager.delegate?.deviceManager(manager, didRemoveDevice: device)
+                manager.delegate?.deviceManager?(manager, didRemoveDevice: device)
             }
         }
     }

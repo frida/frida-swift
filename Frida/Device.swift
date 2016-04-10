@@ -1,6 +1,7 @@
 import CFrida
 
-public class Device : CustomStringConvertible {
+@objc(FridaDevice)
+public class Device: NSObject, NSCopying {
     public var delegate: DeviceDelegate?
 
     public enum Kind {
@@ -55,6 +56,8 @@ public class Device : CustomStringConvertible {
     init(handle: COpaquePointer) {
         self.handle = handle
 
+        super.init()
+
         let rawHandle = gpointer(handle)
         onSpawnedHandler = g_signal_connect_data(rawHandle, "spawned", unsafeBitCast(onSpawned, GCallback.self),
                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
@@ -65,6 +68,11 @@ public class Device : CustomStringConvertible {
         onLostHandler = g_signal_connect_data(rawHandle, "lost", unsafeBitCast(onLost, GCallback.self),
                                               gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                               releaseConnection, GConnectFlags(0))
+    }
+
+    public func copyWithZone(zone: NSZone) -> AnyObject {
+        g_object_ref(gpointer(handle))
+        return Device(handle: handle)
     }
 
     deinit {
@@ -103,7 +111,7 @@ public class Device : CustomStringConvertible {
         }
     }
 
-    public var description: String {
+    public override var description: String {
         return "Frida.Device(id: \"\(id)\", name: \"\(name)\", kind: \"\(kind)\")"
     }
 
@@ -408,7 +416,7 @@ public class Device : CustomStringConvertible {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didSpawn: spawn)
+                device.delegate?.device?(device, didSpawn: spawn)
             }
         }
     }
@@ -420,7 +428,7 @@ public class Device : CustomStringConvertible {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
+                device.delegate?.device?(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
             }
         }
     }
@@ -430,7 +438,7 @@ public class Device : CustomStringConvertible {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.deviceLost(device)
+                device.delegate?.deviceLost?(device)
             }
         }
     }
