@@ -2,7 +2,7 @@ import CFrida
 
 @objc(FridaSession)
 public class Session: NSObject, NSCopying {
-    public var delegate: SessionDelegate?
+    public weak var delegate: SessionDelegate?
 
     public typealias DetachComplete = () -> Void
 

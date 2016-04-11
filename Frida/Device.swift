@@ -2,7 +2,7 @@ import CFrida
 
 @objc(FridaDevice)
 public class Device: NSObject, NSCopying {
-    public var delegate: DeviceDelegate?
+    public weak var delegate: DeviceDelegate?
 
     public enum Kind {
         case Local

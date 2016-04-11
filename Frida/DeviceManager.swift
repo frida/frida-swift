@@ -2,7 +2,7 @@ import CFrida
 
 @objc(FridaDeviceManager)
 public class DeviceManager: NSObject, NSCopying {
-    public var delegate: DeviceManagerDelegate?
+    public weak var delegate: DeviceManagerDelegate?
 
     public typealias CloseComplete = () -> Void
 

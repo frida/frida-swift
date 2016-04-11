@@ -2,7 +2,7 @@ import CFrida
 
 @objc(FridaScript)
 public class Script: NSObject, NSCopying {
-    public var delegate: ScriptDelegate?
+    public weak var delegate: ScriptDelegate?
 
     public typealias LoadComplete = (result: LoadResult) -> Void
     public typealias LoadResult = () throws -> Bool
