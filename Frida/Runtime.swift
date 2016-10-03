@@ -3,15 +3,15 @@ import CFrida
 class Runtime {
     typealias Handler = @convention(block) () -> Void
 
-    static func scheduleOnMainThread(handler: Handler) {
-        dispatch_async(dispatch_get_main_queue(), handler)
+    static func scheduleOnMainThread(_ handler: @escaping Handler) {
+        DispatchQueue.main.async(execute: handler)
     }
 
-    static func scheduleOnFridaThread(handler: Handler) {
+    static func scheduleOnFridaThread(_ handler: @escaping Handler) {
         let data = gpointer(Unmanaged.passRetained(ScheduledOperation(handler: handler)).toOpaque())
         let source = g_idle_source_new()
         g_source_set_callback(source, { data in
-            let operation = Unmanaged<ScheduledOperation>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+            let operation = Unmanaged<ScheduledOperation>.fromOpaque(UnsafeRawPointer(data)!).takeRetainedValue()
             operation.handler()
             return gboolean(0)
         }, data, nil)
@@ -20,9 +20,9 @@ class Runtime {
     }
 
     private class ScheduledOperation {
-        private let handler: Handler
+        fileprivate let handler: Handler
 
-        init(handler: Handler) {
+        init(handler: @escaping Handler) {
             self.handler = handler
         }
     }

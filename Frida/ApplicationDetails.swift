@@ -2,13 +2,13 @@ import CFrida
 
 @objc(FridaApplicationDetails)
 public class ApplicationDetails: NSObject, NSCopying {
-    private let handle: COpaquePointer
+    private let handle: OpaquePointer
 
-    init(handle: COpaquePointer) {
+    init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public func copyWithZone(zone: NSZone) -> AnyObject {
+    public func copy(with zone: NSZone?) -> Any {
         g_object_ref(gpointer(handle))
         return ApplicationDetails(handle: handle)
     }
@@ -18,11 +18,11 @@ public class ApplicationDetails: NSObject, NSCopying {
     }
 
     public var identifier: String {
-        return String.fromCString(frida_application_get_identifier(handle))!
+        return String(cString: frida_application_get_identifier(handle))
     }
 
     public var name: String {
-        return String.fromCString(frida_application_get_name(handle))!
+        return String(cString: frida_application_get_name(handle))
     }
 
     public var pid: UInt32? {
@@ -46,7 +46,7 @@ public class ApplicationDetails: NSObject, NSCopying {
         }
     }
 
-    public override func isEqual(object: AnyObject?) -> Bool {
+    public override func isEqual(_ object: Any?) -> Bool {
         if let details = object as? ApplicationDetails {
             return details.handle == handle
         } else {

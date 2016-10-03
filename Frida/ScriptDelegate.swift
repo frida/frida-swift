@@ -1,5 +1,5 @@
 @objc(FridaScriptDelegate)
 public protocol ScriptDelegate {
-    optional func scriptDestroyed(script: Script)
-    optional func script(script: Script, didReceiveMessage message: AnyObject, withData data: NSData)
+    @objc optional func scriptDestroyed(_ script: Script)
+    @objc optional func script(_ script: Script, didReceiveMessage message: Any, withData data: Data?)
 }

@@ -6,35 +6,35 @@ public class Session: NSObject, NSCopying {
 
     public typealias DetachComplete = () -> Void
 
-    public typealias CreateScriptComplete = (result: CreateScriptResult) -> Void
+    public typealias CreateScriptComplete = (_ result: CreateScriptResult) -> Void
     public typealias CreateScriptResult = () throws -> Script
 
-    public typealias EnableDebuggerComplete = (result: EnableDebuggerResult) -> Void
+    public typealias EnableDebuggerComplete = (_ result: EnableDebuggerResult) -> Void
     public typealias EnableDebuggerResult = () throws -> Bool
 
-    public typealias DisableDebuggerComplete = (result: DisableDebuggerResult) -> Void
+    public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
     public typealias DisableDebuggerResult = () throws -> Bool
 
-    public typealias DisableJitComplete = (result: DisableJitResult) -> Void
+    public typealias DisableJitComplete = (_ result: DisableJitResult) -> Void
     public typealias DisableJitResult = () throws -> Bool
 
-    private typealias DetachedHandler = @convention(c) (session: COpaquePointer, userData: gpointer) -> Void
+    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ userData: gpointer) -> Void
 
-    private let handle: COpaquePointer
+    private let handle: OpaquePointer
     private var onDetachedHandler: gulong = 0
 
-    init(handle: COpaquePointer) {
+    init(handle: OpaquePointer) {
         self.handle = handle
 
         super.init()
 
         let rawHandle = gpointer(handle)
-        onDetachedHandler = g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, GCallback.self),
+        onDetachedHandler = g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, to: GCallback.self),
                                                   gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                   releaseConnection, GConnectFlags(0))
     }
 
-    public func copyWithZone(zone: NSZone) -> AnyObject {
+    public func copy(with zone: NSZone?) -> Any {
         g_object_ref(gpointer(handle))
         return Session(handle: handle)
     }
@@ -58,7 +58,7 @@ public class Session: NSObject, NSCopying {
         return "Frida.Session(pid: \(pid))"
     }
 
-    public override func isEqual(object: AnyObject?) -> Bool {
+    public override func isEqual(_ object: Any?) -> Bool {
         if let session = object as? Session {
             return session.handle == handle
         } else {
@@ -70,28 +70,28 @@ public class Session: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func detach(completionHandler: DetachComplete = {}) {
+    public func detach(_ completionHandler: @escaping DetachComplete = {}) {
         Runtime.scheduleOnFridaThread {
             frida_session_detach(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DetachComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<DetachComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                frida_session_detach_finish(COpaquePointer(source), result)
+                frida_session_detach_finish(OpaquePointer(source), result)
 
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler()
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DetachComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<DetachComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func createScript(name: String, source: String, completionHandler: CreateScriptComplete) {
+    public func createScript(_ name: String, source: String, completionHandler: @escaping CreateScriptComplete) {
         Runtime.scheduleOnFridaThread {
             frida_session_create_script(self.handle, name, source, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<CreateScriptComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<CreateScriptComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                let rawScript = frida_session_create_script_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawScript = frida_session_create_script_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -99,23 +99,23 @@ public class Session: NSObject, NSCopying {
                     return
                 }
 
-                let script = Script(handle: rawScript)
+                let script = Script(handle: rawScript!)
 
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { script }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<CreateScriptComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<CreateScriptComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func enableDebugger(port: UInt16 = 0, completionHandler: EnableDebuggerComplete = { _ in }) {
+    public func enableDebugger(_ port: UInt16 = 0, completionHandler: @escaping EnableDebuggerComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_session_enable_debugger(self.handle, port, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnableDebuggerComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<EnableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_session_enable_debugger_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_session_enable_debugger_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -126,18 +126,18 @@ public class Session: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<EnableDebuggerComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<EnableDebuggerComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func disableDebugger(completionHandler: DisableDebuggerComplete = { _ in }) {
+    public func disableDebugger(_ completionHandler: @escaping DisableDebuggerComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_session_disable_debugger(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DisableDebuggerComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<DisableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_session_disable_debugger_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_session_disable_debugger_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -148,18 +148,18 @@ public class Session: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DisableDebuggerComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<DisableDebuggerComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func disableJit(completionHandler: DisableJitComplete = { _ in }) {
+    public func disableJit(_ completionHandler: @escaping DisableJitComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_session_disable_jit(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DisableJitComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<DisableJitComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_session_disable_jit_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_session_disable_jit_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -170,12 +170,12 @@ public class Session: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<DisableJitComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<DisableJitComplete>(completionHandler)).toOpaque())
         }
     }
 
     private let onDetached: DetachedHandler = { _, userData in
-        let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
+        let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(userData).takeUnretainedValue()
 
         if let session = connection.instance {
             Runtime.scheduleOnMainThread {
@@ -185,6 +185,6 @@ public class Session: NSObject, NSCopying {
     }
 
     private let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Session>>.fromOpaque(COpaquePointer(data)).release()
+        Unmanaged<SignalConnection<Session>>.fromOpaque(data!).release()
     }
 }

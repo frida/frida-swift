@@ -4,38 +4,38 @@ import CFrida
 public class Script: NSObject, NSCopying {
     public weak var delegate: ScriptDelegate?
 
-    public typealias LoadComplete = (result: LoadResult) -> Void
+    public typealias LoadComplete = (_ result: LoadResult) -> Void
     public typealias LoadResult = () throws -> Bool
 
-    public typealias UnloadComplete = (result: UnloadResult) -> Void
+    public typealias UnloadComplete = (_ result: UnloadResult) -> Void
     public typealias UnloadResult = () throws -> Bool
 
-    public typealias PostMessageComplete = (result: PostMessageResult) -> Void
-    public typealias PostMessageResult = () throws -> Bool
+    public typealias PostComplete = (_ result: PostResult) -> Void
+    public typealias PostResult = () throws -> Bool
 
-    private typealias DestroyHandler = @convention(c) (script: COpaquePointer, userData: gpointer) -> Void
-    private typealias MessageHandler = @convention(c) (script: COpaquePointer, message: UnsafePointer<gchar>,
-        data: UnsafePointer<guint8>, dataSize: gint, userData: gpointer) -> Void
+    private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ message: UnsafePointer<gchar>,
+        _ data: OpaquePointer?, _ userData: gpointer) -> Void
 
-    private let handle: COpaquePointer
+    private let handle: OpaquePointer
     private var onDestroyedHandler: gulong = 0
     private var onMessageHandler: gulong = 0
 
-    init(handle: COpaquePointer) {
+    init(handle: OpaquePointer) {
         self.handle = handle
 
         super.init()
 
         let rawHandle = gpointer(handle)
-        onDestroyedHandler = g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, GCallback.self),
+        onDestroyedHandler = g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, to: GCallback.self),
                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                    releaseConnection, GConnectFlags(0))
-        onMessageHandler = g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, GCallback.self),
+        onMessageHandler = g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, to: GCallback.self),
                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                  releaseConnection, GConnectFlags(0))
     }
 
-    public func copyWithZone(zone: NSZone) -> AnyObject {
+    public func copy(with zone: NSZone?) -> Any {
         g_object_ref(gpointer(handle))
         return Script(handle: handle)
     }
@@ -55,7 +55,7 @@ public class Script: NSObject, NSCopying {
         return "Frida.Script()"
     }
 
-    public override func isEqual(object: AnyObject?) -> Bool {
+    public override func isEqual(_ object: Any?) -> Bool {
         if let script = object as? Script {
             return script.handle == handle
         } else {
@@ -67,14 +67,14 @@ public class Script: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func load(completionHandler: LoadComplete = { _ in }) {
+    public func load(_ completionHandler: @escaping LoadComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_script_load(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<LoadComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<LoadComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_script_load_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_load_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -85,18 +85,18 @@ public class Script: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<LoadComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<LoadComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func unload(completionHandler: UnloadComplete = { _ in }) {
+    public func unload(_ completionHandler: @escaping UnloadComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_script_unload(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<UnloadComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+                let operation = Unmanaged<AsyncOperation<UnloadComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_script_unload_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_unload_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -107,18 +107,18 @@ public class Script: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(AsyncOperation<UnloadComplete>(completionHandler)).toOpaque()))
+            }, Unmanaged.passRetained(AsyncOperation<UnloadComplete>(completionHandler)).toOpaque())
         }
     }
 
-    public func postMessage(message: AnyObject, completionHandler: PostMessageComplete = { _ in }) {
+    public func post(_ message: AnyObject, data: Data? = nil, completionHandler: @escaping PostComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            let operation = AsyncOperation<PostMessageComplete>(completionHandler)
+            let operation = AsyncOperation<PostComplete>(completionHandler)
 
             var rawMessage: String
             do {
-                let data = try NSJSONSerialization.dataWithJSONObject(message, options: NSJSONWritingOptions())
-                rawMessage = String(data: data, encoding: NSUTF8StringEncoding)!
+                let data = try JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
+                rawMessage = String(data: data, encoding: String.Encoding.utf8)!
             } catch {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { throw error }
@@ -126,12 +126,14 @@ public class Script: NSObject, NSCopying {
                 return;
             }
 
-            frida_script_post_message(self.handle, rawMessage, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<PostMessageComplete>>.fromOpaque(COpaquePointer(data)).takeRetainedValue()
+            let rawData = Bytes.fromData(buffer: data)
 
-                var rawError: UnsafeMutablePointer<GError> = nil
-                frida_script_post_message_finish(COpaquePointer(source), result, &rawError)
-                if rawError != nil {
+            frida_script_post(self.handle, rawMessage, rawData, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<PostComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_post_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
                         operation.completionHandler { throw error }
@@ -142,12 +144,14 @@ public class Script: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, UnsafeMutablePointer(Unmanaged.passRetained(operation).toOpaque()))
+            }, Unmanaged.passRetained(operation).toOpaque())
+
+            g_bytes_unref(rawData)
         }
     }
 
     private let onDestroyed: DestroyHandler = { _, userData in
-        let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
+        let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
@@ -156,12 +160,18 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    private let onMessage: MessageHandler = { _, rawMessage, rawData, rawDataSize, userData in
-        let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(COpaquePointer(userData)).takeUnretainedValue()
+    private let onMessage: MessageHandler = { _, rawMessage, rawData, userData in
+        let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
-        let messageData = NSData(bytesNoCopy: UnsafeMutablePointer<Void>(rawMessage), length: Int(strlen(rawMessage)), freeWhenDone: false)
-        let message = try! NSJSONSerialization.JSONObjectWithData(messageData, options: NSJSONReadingOptions())
-        let data = NSData(bytes: rawData, length: Int(rawDataSize))
+        let messageData = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawMessage), count: Int(strlen(rawMessage)), deallocator: .none)
+        let message = try! JSONSerialization.jsonObject(with: messageData, options: JSONSerialization.ReadingOptions())
+
+        var data: Data? = nil
+        if let rawData = rawData {
+            var size: gsize = 0
+            let rawDataBytes = g_bytes_get_data(rawData, &size)!
+            data = Data(bytes: rawDataBytes, count: Int(size))
+        }
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
@@ -171,6 +181,6 @@ public class Script: NSObject, NSCopying {
     }
 
     private let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Script>>.fromOpaque(COpaquePointer(data)).release()
+        Unmanaged<SignalConnection<Script>>.fromOpaque(data!).release()
     }
 }

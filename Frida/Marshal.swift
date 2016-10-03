@@ -1,45 +1,45 @@
 import CFrida
 
 class Marshal {
-    static func takeNativeError(error: UnsafeMutablePointer<GError>) -> Error {
-        let code = FridaError(UInt32(error.memory.code))
-        let message = String.fromCString(error.memory.message)!
+    static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Error {
+        let code = CFrida.FridaError.init(UInt32(error.pointee.code))
+        let message = String(cString: error.pointee.message)
 
         g_error_free(error)
 
         switch code {
         case FRIDA_ERROR_SERVER_NOT_RUNNING:
-            return Error.ServerNotRunning(message)
+            return FridaError.serverNotRunning(message)
         case FRIDA_ERROR_EXECUTABLE_NOT_FOUND:
-            return Error.ExecutableNotFound(message)
+            return FridaError.executableNotFound(message)
         case FRIDA_ERROR_EXECUTABLE_NOT_SUPPORTED:
-            return Error.ExecutableNotSupported(message)
+            return FridaError.executableNotSupported(message)
         case FRIDA_ERROR_PROCESS_NOT_FOUND:
-            return Error.ProcessNotFound(message)
+            return FridaError.processNotFound(message)
         case FRIDA_ERROR_PROCESS_NOT_RESPONDING:
-            return Error.ProcessNotResponding(message)
+            return FridaError.processNotResponding(message)
         case FRIDA_ERROR_INVALID_ARGUMENT:
-            return Error.InvalidArgument(message)
+            return FridaError.invalidArgument(message)
         case FRIDA_ERROR_INVALID_OPERATION:
-            return Error.InvalidOperation(message)
+            return FridaError.invalidOperation(message)
         case FRIDA_ERROR_PERMISSION_DENIED:
-            return Error.PermissionDenied(message)
+            return FridaError.permissionDenied(message)
         case FRIDA_ERROR_ADDRESS_IN_USE:
-            return Error.AddressInUse(message)
+            return FridaError.addressInUse(message)
         case FRIDA_ERROR_TIMED_OUT:
-            return Error.TimedOut(message)
+            return FridaError.timedOut(message)
         case FRIDA_ERROR_NOT_SUPPORTED:
-            return Error.NotSupported(message)
+            return FridaError.notSupported(message)
         case FRIDA_ERROR_PROTOCOL:
-            return Error.ProtocolViolation(message)
+            return FridaError.protocolViolation(message)
         case FRIDA_ERROR_TRANSPORT:
-            return Error.Transport(message)
+            return FridaError.transport(message)
         default:
             fatalError("Unexpected Frida error code")
         }
     }
 
-    static func imageFromIcon(icon: COpaquePointer) -> NSImage? {
+    static func imageFromIcon(_ icon: OpaquePointer?) -> NSImage? {
         if icon == nil {
             return nil
         }
@@ -50,19 +50,20 @@ class Marshal {
         let bitsPerPixel = 4 * bitsPerComponent
         let bytesPerRow = width * (bitsPerPixel / 8)
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo: CGBitmapInfo = [.ByteOrder32Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.PremultipliedLast.rawValue)]
+        let bitmapInfo: CGBitmapInfo = [.byteOrder32Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)]
 
-        var size: Int32 = 0
-        let pixels = frida_icon_get_pixels(icon, &size)
-        let provider = CGDataProviderCreateWithData(g_object_ref(gpointer(icon)), pixels, Int(size), { info, data, size in
-            g_object_unref(info)
-        })
+        let pixels = frida_icon_get_pixels(icon)
+        var size: gsize = 0
+        let data = g_bytes_get_data(pixels, &size)!
+        let provider = CGDataProvider(dataInfo: UnsafeMutableRawPointer(g_bytes_ref(pixels)), data: data, size: Int(size), releaseData: { info, data, size in
+            g_bytes_unref(OpaquePointer(info))
+        })!
 
         let shouldInterpolate = false
-        let renderingIntent = CGColorRenderingIntent.RenderingIntentDefault
+        let renderingIntent = CGColorRenderingIntent.defaultIntent
 
-        let image = CGImageCreate(width, height, bitsPerComponent, bitsPerPixel, bytesPerRow, colorSpace, bitmapInfo, provider, nil, shouldInterpolate, renderingIntent)!
+        let image = CGImage(width: width, height: height, bitsPerComponent: bitsPerComponent, bitsPerPixel: bitsPerPixel, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: bitmapInfo, provider: provider, decode: nil, shouldInterpolate: shouldInterpolate, intent: renderingIntent)!
 
-        return NSImage(CGImage: image, size: NSSize(width: width, height: height))
+        return NSImage(cgImage: image, size: NSSize(width: width, height: height))
     }
 }

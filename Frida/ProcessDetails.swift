@@ -2,13 +2,13 @@ import CFrida
 
 @objc(FridaProcessDetails)
 public class ProcessDetails: NSObject, NSCopying {
-    private let handle: COpaquePointer
+    private let handle: OpaquePointer
 
-    init(handle: COpaquePointer) {
+    init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public func copyWithZone(zone: NSZone) -> AnyObject {
+    public func copy(with zone: NSZone?) -> Any {
         g_object_ref(gpointer(handle))
         return ProcessDetails(handle: handle)
     }
@@ -22,7 +22,7 @@ public class ProcessDetails: NSObject, NSCopying {
     }
 
     public var name: String {
-        return String.fromCString(frida_process_get_name(handle))!
+        return String(cString: frida_process_get_name(handle))
     }
 
     public var smallIcon: NSImage? {
@@ -37,7 +37,7 @@ public class ProcessDetails: NSObject, NSCopying {
         return "Frida.ProcessDetails(pid: \(pid), name: \"\(name)\")"
     }
 
-    public override func isEqual(object: AnyObject?) -> Bool {
+    public override func isEqual(_ object: Any?) -> Bool {
         if let details = object as? ProcessDetails {
             return details.handle == handle
         } else {

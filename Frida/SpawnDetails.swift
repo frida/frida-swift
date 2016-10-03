@@ -2,13 +2,13 @@ import CFrida
 
 @objc(FridaSpawnDetails)
 public class SpawnDetails: NSObject, NSCopying {
-    private let handle: COpaquePointer
+    private let handle: OpaquePointer
 
-    init(handle: COpaquePointer) {
+    init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public func copyWithZone(zone: NSZone) -> AnyObject {
+    public func copy(with zone: NSZone?) -> Any {
         g_object_ref(gpointer(handle))
         return SpawnDetails(handle: handle)
     }
@@ -22,7 +22,7 @@ public class SpawnDetails: NSObject, NSCopying {
     }
 
     public var identifier: String? {
-        return String.fromCString(frida_spawn_get_identifier(handle))
+        return String(cString: frida_spawn_get_identifier(handle))
     }
 
     public override var description: String {
@@ -33,7 +33,7 @@ public class SpawnDetails: NSObject, NSCopying {
         }
     }
 
-    public override func isEqual(object: AnyObject?) -> Bool {
+    public override func isEqual(_ object: Any?) -> Bool {
         if let details = object as? SpawnDetails {
             return details.handle == handle
         } else {
