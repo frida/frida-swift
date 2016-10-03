@@ -169,11 +169,14 @@ public class Script: NSObject, NSCopying {
         var data: Data? = nil
         if let rawData = rawData {
             var size: gsize = 0
-            let rawDataBytes = g_bytes_get_data(rawData, &size)!
-            g_bytes_ref(rawData)
-            data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: rawDataBytes), count: Int(size), deallocator: .custom({ (ptr, size) in
-                g_bytes_unref(rawData)
-            }))
+            if let rawDataBytes = g_bytes_get_data(rawData, &size), size > 0 {
+                g_bytes_ref(rawData)
+                data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: rawDataBytes), count: Int(size), deallocator: .custom({ (ptr, size) in
+                    g_bytes_unref(rawData)
+                }))
+            } else {
+                data = Data()
+            }
         }
 
         if let script = connection.instance {
