@@ -17,11 +17,11 @@ Swift bindings for [Frida](http://www.frida.re).
 func testFullCycle() {
     let pid: UInt = 20854
 
-    let expectation = self.expectationWithDescription("Got message from script")
+    let expectation = self.expectation(description: "Got message from script")
 
     class TestDelegate : ScriptDelegate {
         let expectation: XCTestExpectation
-        var messages = [AnyObject]()
+        var messages = [Any]()
 
         init(expectation: XCTestExpectation) {
             self.expectation = expectation
@@ -31,7 +31,7 @@ func testFullCycle() {
             print("destroyed")
         }
 
-        func script(_: Script, didReceiveMessage message: AnyObject, withData data: NSData) {
+        func script(_: Script, didReceiveMessage message: Any, withData data: Data?) {
             print("didReceiveMessage")
             messages.append(message)
             if messages.count == 2 {
@@ -45,14 +45,14 @@ func testFullCycle() {
     var script: Script? = nil
     manager.enumerateDevices { result in
         let devices = try! result()
-        let localDevice = devices.filter { $0.kind == Device.Kind.Local }.first!
+        let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
         localDevice.attach(pid) { result in
             let session = try! result()
             session.createScript("test", source: "console.log(\"hello\"); send(1337);") { result in
                 let s = try! result()
                 s.delegate = delegate
                 s.load() { result in
-                    try! result()
+                    _ = try! result()
                     print("Script loaded")
                 }
                 script = s
@@ -60,7 +60,7 @@ func testFullCycle() {
         }
     }
 
-    self.waitForExpectationsWithTimeout(5.0, handler: nil)
+    self.waitForExpectations(timeout: 5.0, handler: nil)
     print("Done with script \(script), messages: \(delegate.messages)")
 }
 ```
