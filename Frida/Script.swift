@@ -111,7 +111,7 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    public func post(_ message: AnyObject, data: Data? = nil, completionHandler: @escaping PostComplete = { _ in }) {
+    public func post(_ message: Any, data: Data? = nil, completionHandler: @escaping PostComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             let operation = AsyncOperation<PostComplete>(completionHandler)
 
@@ -170,7 +170,10 @@ public class Script: NSObject, NSCopying {
         if let rawData = rawData {
             var size: gsize = 0
             let rawDataBytes = g_bytes_get_data(rawData, &size)!
-            data = Data(bytes: rawDataBytes, count: Int(size))
+            g_bytes_ref(rawData)
+            data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: rawDataBytes), count: Int(size), deallocator: .custom({ (ptr, size) in
+                g_bytes_unref(rawData)
+            }))
         }
 
         if let script = connection.instance {
