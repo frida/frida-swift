@@ -2,38 +2,38 @@ import CFrida
 
 class Marshal {
     static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Error {
-        let code = CFrida.FridaError.init(UInt32(error.pointee.code))
+        let code = FridaError.init(UInt32(error.pointee.code))
         let message = String(cString: error.pointee.message)
 
         g_error_free(error)
 
         switch code {
         case FRIDA_ERROR_SERVER_NOT_RUNNING:
-            return FridaError.serverNotRunning(message)
+            return Error.serverNotRunning(message)
         case FRIDA_ERROR_EXECUTABLE_NOT_FOUND:
-            return FridaError.executableNotFound(message)
+            return Error.executableNotFound(message)
         case FRIDA_ERROR_EXECUTABLE_NOT_SUPPORTED:
-            return FridaError.executableNotSupported(message)
+            return Error.executableNotSupported(message)
         case FRIDA_ERROR_PROCESS_NOT_FOUND:
-            return FridaError.processNotFound(message)
+            return Error.processNotFound(message)
         case FRIDA_ERROR_PROCESS_NOT_RESPONDING:
-            return FridaError.processNotResponding(message)
+            return Error.processNotResponding(message)
         case FRIDA_ERROR_INVALID_ARGUMENT:
-            return FridaError.invalidArgument(message)
+            return Error.invalidArgument(message)
         case FRIDA_ERROR_INVALID_OPERATION:
-            return FridaError.invalidOperation(message)
+            return Error.invalidOperation(message)
         case FRIDA_ERROR_PERMISSION_DENIED:
-            return FridaError.permissionDenied(message)
+            return Error.permissionDenied(message)
         case FRIDA_ERROR_ADDRESS_IN_USE:
-            return FridaError.addressInUse(message)
+            return Error.addressInUse(message)
         case FRIDA_ERROR_TIMED_OUT:
-            return FridaError.timedOut(message)
+            return Error.timedOut(message)
         case FRIDA_ERROR_NOT_SUPPORTED:
-            return FridaError.notSupported(message)
+            return Error.notSupported(message)
         case FRIDA_ERROR_PROTOCOL:
-            return FridaError.protocolViolation(message)
+            return Error.protocolViolation(message)
         case FRIDA_ERROR_TRANSPORT:
-            return FridaError.transport(message)
+            return Error.transport(message)
         default:
             fatalError("Unexpected Frida error code")
         }

@@ -1,6 +1,6 @@
 import Foundation
 
-public enum FridaError: Error {
+public enum Error: Swift.Error {
     case serverNotRunning(String)
     case executableNotFound(String)
     case executableNotSupported(String)
