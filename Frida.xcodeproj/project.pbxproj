@@ -420,6 +420,7 @@
 				);
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
+					"-lbsm",
 					"-lresolv",
 					"-Wl,-no_compact_unwind",
 					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
@@ -456,6 +457,7 @@
 				);
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
+					"-lbsm",
 					"-lresolv",
 					"-Wl,-no_compact_unwind",
 					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
