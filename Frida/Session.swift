@@ -15,8 +15,8 @@ public class Session: NSObject, NSCopying {
     public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
     public typealias DisableDebuggerResult = () throws -> Bool
 
-    public typealias DisableJitComplete = (_ result: DisableJitResult) -> Void
-    public typealias DisableJitResult = () throws -> Bool
+    public typealias EnableJitComplete = (_ result: EnableJitResult) -> Void
+    public typealias EnableJitResult = () throws -> Bool
 
     private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ userData: gpointer) -> Void
 
@@ -152,13 +152,13 @@ public class Session: NSObject, NSCopying {
         }
     }
 
-    public func disableJit(_ completionHandler: @escaping DisableJitComplete = { _ in }) {
+    public func enableJit(_ completionHandler: @escaping EnableJitComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_session_disable_jit(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DisableJitComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_session_enable_jit(self.handle, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<EnableJitComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_session_disable_jit_finish(OpaquePointer(source), result, &rawError)
+                frida_session_enable_jit_finish(OpaquePointer(source), result, &rawError)
                 if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
@@ -170,7 +170,7 @@ public class Session: NSObject, NSCopying {
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler { true }
                 }
-            }, Unmanaged.passRetained(AsyncOperation<DisableJitComplete>(completionHandler)).toOpaque())
+            }, Unmanaged.passRetained(AsyncOperation<EnableJitComplete>(completionHandler)).toOpaque())
         }
     }
 
