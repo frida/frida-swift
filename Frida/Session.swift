@@ -18,7 +18,7 @@ public class Session: NSObject, NSCopying {
     public typealias EnableJitComplete = (_ result: EnableJitResult) -> Void
     public typealias EnableJitResult = () throws -> Bool
 
-    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
     private var onDetachedHandler: gulong = 0
@@ -174,17 +174,34 @@ public class Session: NSObject, NSCopying {
         }
     }
 
-    private let onDetached: DetachedHandler = { _, userData in
+    private let onDetached: DetachedHandler = { _, reason, userData in
         let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(userData).takeUnretainedValue()
 
         if let session = connection.instance {
             Runtime.scheduleOnMainThread {
-                session.delegate?.sessionDetached(session)
+                session.delegate?.session(session, didDetach: SessionDetachReason(rawValue: reason)!)
             }
         }
     }
 
     private let releaseConnection: GClosureNotify = { data, _ in
         Unmanaged<SignalConnection<Session>>.fromOpaque(data!).release()
+    }
+}
+
+@objc(FridaSessionDetachReason)
+public enum SessionDetachReason: Int, CustomStringConvertible {
+    case applicationRequested = 1
+    case processTerminated
+    case serverTerminated
+    case deviceGone
+
+    public var description: String {
+        switch self {
+        case .applicationRequested: return "applicationRequested"
+        case .processTerminated: return "processTerminated"
+        case .serverTerminated: return "serverTerminated"
+        case .deviceGone: return "deviceGone"
+        }
     }
 }

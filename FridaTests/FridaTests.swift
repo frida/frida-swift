@@ -83,6 +83,41 @@ class FridaTests: XCTestCase {
         assert(processes.count > 0)
     }
 
+    func xxxtestDetached() {
+        let pid: UInt = 63626
+
+        let expectation = self.expectation(description: "Got detached from session")
+
+        class TestDelegate : SessionDelegate {
+            let expectation: XCTestExpectation
+            var reason: SessionDetachReason?
+
+            init(expectation: XCTestExpectation) {
+                self.expectation = expectation
+            }
+
+            func session(_ session: Session, didDetach reason: SessionDetachReason) {
+                self.reason = reason
+                expectation.fulfill()
+            }
+        }
+        let delegate = TestDelegate(expectation: expectation)
+
+        let manager = DeviceManager()
+        var session: Session? = nil
+        manager.enumerateDevices { result in
+            let devices = try! result()
+            let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
+            localDevice.attach(pid) { result in
+                session = try! result()
+                session!.delegate = delegate
+            }
+        }
+
+        self.waitForExpectations(timeout: 60.0, handler: nil)
+        print("Got detached from \(session!), reason: \(delegate.reason!)")
+    }
+
     func xxxtestFullCycle() {
         let pid: UInt = 20854
 

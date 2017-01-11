@@ -1,4 +1,4 @@
 @objc(FridaSessionDelegate)
 public protocol SessionDelegate {
-    func sessionDetached(_ session: Session)
+    func session(_ session: Session, didDetach reason: SessionDetachReason)
 }
