@@ -25,8 +25,8 @@ public class Device: NSObject, NSCopying {
     public typealias DisableSpawnGatingComplete = (_ result: DisableSpawnGatingResult) -> Void
     public typealias DisableSpawnGatingResult = () throws -> Bool
 
-    public typealias EnumeratePendingSpawnsComplete = (_ result: EnumeratePendingSpawnsResult) -> Void
-    public typealias EnumeratePendingSpawnsResult = () throws -> [SpawnDetails]
+    public typealias EnumeratePendingSpawnComplete = (_ result: EnumeratePendingSpawnResult) -> Void
+    public typealias EnumeratePendingSpawnResult = () throws -> [SpawnDetails]
 
     public typealias SpawnComplete = (_ result: SpawnResult) -> Void
     public typealias SpawnResult = () throws -> UInt
@@ -255,13 +255,13 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func enumeratePendingSpawns(_ completionHandler: @escaping EnumeratePendingSpawnsComplete) {
+    public func enumeratePendingSpawn(_ completionHandler: @escaping EnumeratePendingSpawnComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_pending_spawns(self.handle, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumeratePendingSpawnsComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_enumerate_pending_spawn(self.handle, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<EnumeratePendingSpawnComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawSpawns = frida_device_enumerate_pending_spawns_finish(OpaquePointer(source), result, &rawError)
+                let rawSpawn = frida_device_enumerate_pending_spawn_finish(OpaquePointer(source), result, &rawError)
                 if let rawError = rawError {
                     let error = Marshal.takeNativeError(rawError)
                     Runtime.scheduleOnMainThread {
@@ -270,18 +270,18 @@ public class Device: NSObject, NSCopying {
                     return
                 }
 
-                var spawns = [SpawnDetails]()
-                let numberOfSpawns = frida_spawn_list_size(rawSpawns)
-                for index in 0..<numberOfSpawns {
-                    let spawn = SpawnDetails(handle: frida_spawn_list_get(rawSpawns, index))
-                    spawns.append(spawn)
+                var spawn = [SpawnDetails]()
+                let numberOfSpawn = frida_spawn_list_size(rawSpawn)
+                for index in 0..<numberOfSpawn {
+                    let spawn = SpawnDetails(handle: frida_spawn_list_get(rawSpawn, index))
+                    spawn.append(spawn)
                 }
-                g_object_unref(gpointer(rawSpawns))
+                g_object_unref(gpointer(rawSpawn))
 
                 Runtime.scheduleOnMainThread {
-                    operation.completionHandler { spawns }
+                    operation.completionHandler { spawn }
                 }
-            }, Unmanaged.passRetained(AsyncOperation<EnumeratePendingSpawnsComplete>(completionHandler)).toOpaque())
+            }, Unmanaged.passRetained(AsyncOperation<EnumeratePendingSpawnComplete>(completionHandler)).toOpaque())
         }
     }
 
@@ -301,8 +301,8 @@ public class Device: NSObject, NSCopying {
                 }
                 envpLength = gint(elements.count)
             } else {
-                rawEnvp = g_get_environ()
-                envpLength = gint(g_strv_length(rawEnvp))
+                rawEnvp = UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>(nil)
+                envpLength = -1
             }
 
             frida_device_spawn(self.handle, path, rawArgv, gint(argv.count), rawEnvp, envpLength, { source, result, data in
