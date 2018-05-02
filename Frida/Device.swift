@@ -273,8 +273,8 @@ public class Device: NSObject, NSCopying {
                 var spawn = [SpawnDetails]()
                 let numberOfSpawn = frida_spawn_list_size(rawSpawn)
                 for index in 0..<numberOfSpawn {
-                    let spawn = SpawnDetails(handle: frida_spawn_list_get(rawSpawn, index))
-                    spawn.append(spawn)
+                    let details = SpawnDetails(handle: frida_spawn_list_get(rawSpawn, index))
+                    spawn.append(details)
                 }
                 g_object_unref(gpointer(rawSpawn))
 
@@ -292,16 +292,16 @@ public class Device: NSObject, NSCopying {
                 rawArgv.advanced(by: index).pointee = g_strdup(arg)
             }
 
-            var rawEnvp: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>
+            var rawEnvp: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?
             var envpLength: gint
             if let elements = envp {
                 rawEnvp = unsafeBitCast(g_malloc0(gsize((elements.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
                 for (index, env) in elements.enumerated() {
-                    rawEnvp.advanced(by: index).pointee = g_strdup(env)
+                    rawEnvp!.advanced(by: index).pointee = g_strdup(env)
                 }
                 envpLength = gint(elements.count)
             } else {
-                rawEnvp = UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>(nil)
+                rawEnvp = nil
                 envpLength = -1
             }
 
