@@ -43,13 +43,15 @@ public class Device: NSObject, NSCopying {
     public typealias AttachComplete = (_ result: AttachResult) -> Void
     public typealias AttachResult = () throws -> Session
 
-    private typealias SpawnedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias SpawnAddedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias SpawnRemovedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
     private typealias OutputHandler = @convention(c) (_ device: OpaquePointer, _ pid: guint, _ fd: gint,
         _ data: UnsafePointer<guint8>, _ dataSize: gint, _ userData: gpointer) -> Void
     private typealias LostHandler = @convention(c) (_ device: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
-    private var onSpawnedHandler: gulong = 0
+    private var onSpawnAddedHandler: gulong = 0
+    private var onSpawnRemovedHandler: gulong = 0
     private var onOutputHandler: gulong = 0
     private var onLostHandler: gulong = 0
 
@@ -59,9 +61,12 @@ public class Device: NSObject, NSCopying {
         super.init()
 
         let rawHandle = gpointer(handle)
-        onSpawnedHandler = g_signal_connect_data(rawHandle, "spawned", unsafeBitCast(onSpawned, to: GCallback.self),
-                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                 releaseConnection, GConnectFlags(0))
+        onSpawnAddedHandler = g_signal_connect_data(rawHandle, "spawn-added", unsafeBitCast(onSpawnAdded, to: GCallback.self),
+                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                    releaseConnection, GConnectFlags(0))
+        onSpawnRemovedHandler = g_signal_connect_data(rawHandle, "spawn-removed", unsafeBitCast(onSpawnRemoved, to: GCallback.self),
+                                                      gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                      releaseConnection, GConnectFlags(0))
         onOutputHandler = g_signal_connect_data(rawHandle, "output", unsafeBitCast(onOutput, to: GCallback.self),
                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                 releaseConnection, GConnectFlags(0))
@@ -77,7 +82,7 @@ public class Device: NSObject, NSCopying {
 
     deinit {
         let rawHandle = gpointer(handle)
-        let handlers = [onSpawnedHandler, onOutputHandler, onLostHandler]
+        let handlers = [onSpawnAddedHandler, onSpawnRemovedHandler, onOutputHandler, onLostHandler]
         Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
@@ -285,27 +290,36 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func spawn(_ path: String, argv: [String], envp: [String]? = nil, completionHandler: @escaping SpawnComplete) {
+    public func spawn(_ path: String, argv: [String]? = nil, envp: [String]? = nil, cwd: String? = nil,
+                      stdio: Stdio? = nil, aslr: Aslr? = nil, completionHandler: @escaping SpawnComplete) {
         Runtime.scheduleOnFridaThread {
-            let rawArgv = unsafeBitCast(g_malloc0(gsize((argv.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
-            for (index, arg) in argv.enumerated() {
-                rawArgv.advanced(by: index).pointee = g_strdup(arg)
+            let options = frida_spawn_options_new()
+
+            let (rawArgv, argvLength) = Marshal.strvFromArray(argv)
+            if let rawArgv = rawArgv {
+                frida_spawn_options_set_argv(options, rawArgv, argvLength)
+                g_strfreev(rawArgv)
             }
 
-            var rawEnvp: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?
-            var envpLength: gint
-            if let elements = envp {
-                rawEnvp = unsafeBitCast(g_malloc0(gsize((elements.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
-                for (index, env) in elements.enumerated() {
-                    rawEnvp!.advanced(by: index).pointee = g_strdup(env)
-                }
-                envpLength = gint(elements.count)
-            } else {
-                rawEnvp = nil
-                envpLength = -1
+            let (rawEnvp, envpLength) = Marshal.strvFromArray(envp)
+            if let rawEnvp = rawEnvp {
+                frida_spawn_options_set_envp(options, rawEnvp, envpLength)
+                g_strfreev(rawEnvp)
             }
 
-            frida_device_spawn(self.handle, path, rawArgv, gint(argv.count), rawEnvp, envpLength, { source, result, data in
+            if let cwd = cwd {
+                frida_spawn_options_set_cwd(options, cwd)
+            }
+
+            if let stdio = stdio {
+                frida_spawn_options_set_stdio(options, FridaStdio(UInt32(stdio.rawValue)))
+            }
+
+            if let aslr = aslr {
+                frida_spawn_options_set_aslr(options, FridaAslr(UInt32(aslr.rawValue)))
+            }
+
+            frida_device_spawn(self.handle, path, options, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<SpawnComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -323,8 +337,7 @@ public class Device: NSObject, NSCopying {
                 }
             }, Unmanaged.passRetained(AsyncOperation<SpawnComplete>(completionHandler)).toOpaque())
 
-            g_strfreev(rawEnvp)
-            g_strfreev(rawArgv)
+            g_object_unref(gpointer(options))
         }
     }
 
@@ -420,7 +433,7 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    private let onSpawned: SpawnedHandler = { _, rawSpawn, userData in
+    private let onSpawnAdded: SpawnAddedHandler = { _, rawSpawn, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawSpawn))
@@ -428,7 +441,20 @@ public class Device: NSObject, NSCopying {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didSpawn: spawn)
+                device.delegate?.device?(device, didAddSpawn: spawn)
+            }
+        }
+    }
+
+    private let onSpawnRemoved: SpawnRemovedHandler = { _, rawSpawn, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        g_object_ref(gpointer(rawSpawn))
+        let spawn = SpawnDetails(handle: rawSpawn)
+
+        if let device = connection.instance {
+            Runtime.scheduleOnMainThread {
+                device.delegate?.device?(device, didRemoveSpawn: spawn)
             }
         }
     }
@@ -457,5 +483,31 @@ public class Device: NSObject, NSCopying {
 
     private let releaseConnection: GClosureNotify = { data, _ in
         Unmanaged<SignalConnection<Device>>.fromOpaque(data!).release()
+    }
+}
+
+@objc(FridaStdio)
+public enum Stdio: Int, CustomStringConvertible {
+    case inherit
+    case pipe
+
+    public var description: String {
+        switch self {
+        case .inherit: return "inherit"
+        case .pipe: return "pipe"
+        }
+    }
+}
+
+@objc(FridaAslr)
+public enum Aslr: Int, CustomStringConvertible {
+    case auto
+    case disabled
+    
+    public var description: String {
+        switch self {
+        case .auto: return "auto"
+        case .disabled: return "disabled"
+        }
     }
 }

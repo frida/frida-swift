@@ -66,4 +66,22 @@ class Marshal {
 
         return NSImage(cgImage: image, size: NSSize(width: width, height: height))
     }
+
+    static func strvFromArray(_ array: [String]?) -> (UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?, gint) {
+        var strv: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?
+        var length: gint
+
+        if let elements = array {
+            strv = unsafeBitCast(g_malloc0(gsize((elements.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
+            for (index, element) in elements.enumerated() {
+                strv!.advanced(by: index).pointee = g_strdup(element)
+            }
+            length = gint(elements.count)
+        } else {
+            strv = nil
+            length = -1
+        }
+
+        return (strv, length)
+    }
 }

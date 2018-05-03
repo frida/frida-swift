@@ -192,6 +192,7 @@ public class Session: NSObject, NSCopying {
 @objc(FridaSessionDetachReason)
 public enum SessionDetachReason: Int, CustomStringConvertible {
     case applicationRequested = 1
+    case processReplaced
     case processTerminated
     case serverTerminated
     case deviceGone
@@ -199,6 +200,7 @@ public enum SessionDetachReason: Int, CustomStringConvertible {
     public var description: String {
         switch self {
         case .applicationRequested: return "applicationRequested"
+        case .processReplaced: return "processReplaced"
         case .processTerminated: return "processTerminated"
         case .serverTerminated: return "serverTerminated"
         case .deviceGone: return "deviceGone"
