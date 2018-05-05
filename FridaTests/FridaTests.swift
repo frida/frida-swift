@@ -42,7 +42,7 @@ class FridaTests: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        print("Got application: \(application)")
+        print("Got application: \(application.debugDescription)")
     }
 
     func testEnumerateApplications() {
@@ -165,6 +165,6 @@ class FridaTests: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        print("Done with script \(script), messages: \(delegate.messages)")
+        print("Done with script \(script.debugDescription), messages: \(delegate.messages)")
     }
 }
