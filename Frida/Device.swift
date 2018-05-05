@@ -290,8 +290,8 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func spawn(_ path: String, argv: [String]? = nil, envp: [String]? = nil, cwd: String? = nil,
-                      stdio: Stdio? = nil, aslr: Aslr? = nil, completionHandler: @escaping SpawnComplete) {
+    public func spawn(_ program: String, argv: [String]? = nil, envp: [String: String]? = nil, env: [String: String]? = nil,
+                      cwd: String? = nil, stdio: Stdio? = nil, completionHandler: @escaping SpawnComplete) {
         Runtime.scheduleOnFridaThread {
             let options = frida_spawn_options_new()
 
@@ -301,10 +301,16 @@ public class Device: NSObject, NSCopying {
                 g_strfreev(rawArgv)
             }
 
-            let (rawEnvp, envpLength) = Marshal.strvFromArray(envp)
+            let (rawEnvp, envpLength) = Marshal.envpFromDictionary(envp)
             if let rawEnvp = rawEnvp {
                 frida_spawn_options_set_envp(options, rawEnvp, envpLength)
                 g_strfreev(rawEnvp)
+            }
+
+            let (rawEnv, envLength) = Marshal.envpFromDictionary(env)
+            if let rawEnv = rawEnv {
+                frida_spawn_options_set_env(options, rawEnv, envLength)
+                g_strfreev(rawEnv)
             }
 
             if let cwd = cwd {
@@ -315,11 +321,7 @@ public class Device: NSObject, NSCopying {
                 frida_spawn_options_set_stdio(options, FridaStdio(UInt32(stdio.rawValue)))
             }
 
-            if let aslr = aslr {
-                frida_spawn_options_set_aslr(options, FridaAslr(UInt32(aslr.rawValue)))
-            }
-
-            frida_device_spawn(self.handle, path, options, { source, result, data in
+            frida_device_spawn(self.handle, program, options, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<SpawnComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -495,19 +497,6 @@ public enum Stdio: Int, CustomStringConvertible {
         switch self {
         case .inherit: return "inherit"
         case .pipe: return "pipe"
-        }
-    }
-}
-
-@objc(FridaAslr)
-public enum Aslr: Int, CustomStringConvertible {
-    case auto
-    case disabled
-    
-    public var description: String {
-        switch self {
-        case .auto: return "auto"
-        case .disabled: return "disabled"
         }
     }
 }

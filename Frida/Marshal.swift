@@ -71,17 +71,35 @@ class Marshal {
         var strv: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?
         var length: gint
 
-        if let elements = array {
-            strv = unsafeBitCast(g_malloc0(gsize((elements.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
-            for (index, element) in elements.enumerated() {
+        if let array = array {
+            strv = unsafeBitCast(g_malloc0(gsize((array.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
+            for (index, element) in array.enumerated() {
                 strv!.advanced(by: index).pointee = g_strdup(element)
             }
-            length = gint(elements.count)
+            length = gint(array.count)
         } else {
             strv = nil
             length = -1
         }
 
         return (strv, length)
+    }
+
+    static func envpFromDictionary(_ dict: [String: String]?) -> (UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?, gint) {
+        var envp: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>?
+        var length: gint
+
+        if let dict = dict {
+            envp = unsafeBitCast(g_malloc0(gsize((dict.count + 1) * MemoryLayout<gpointer>.size)), to: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>.self)
+            for item in dict.enumerated() {
+                envp!.advanced(by: item.offset).pointee = g_strdup(item.element.key + "=" + item.element.value)
+            }
+            length = gint(dict.count)
+        } else {
+            envp = nil
+            length = -1
+        }
+
+        return (envp, length)
     }
 }
