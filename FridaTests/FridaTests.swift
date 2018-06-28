@@ -34,7 +34,7 @@ class FridaTests: XCTestCase {
         var application: ApplicationDetails?
         manager.enumerateDevices { result in
             let devices = try! result()
-            let usbDevice = devices.filter { $0.kind == Device.Kind.tether }.first!
+            let usbDevice = devices.filter { $0.kind == Device.Kind.usb }.first!
             usbDevice.getFrontmostApplication() { result in
                 application = try! result()
                 expectation.fulfill()
@@ -52,7 +52,7 @@ class FridaTests: XCTestCase {
         var applications = [ApplicationDetails]()
         manager.enumerateDevices { result in
             let devices = try! result()
-            let usbDevice = devices.filter { $0.kind == Device.Kind.tether }.first!
+            let usbDevice = devices.filter { $0.kind == Device.Kind.usb }.first!
             usbDevice.enumerateApplications() { result in
                 applications = try! result()
                 expectation.fulfill()

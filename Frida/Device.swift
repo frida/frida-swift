@@ -6,8 +6,8 @@ public class Device: NSObject, NSCopying {
 
     public enum Kind {
         case local
-        case tether
         case remote
+        case usb
     }
 
     public typealias GetFrontmostApplicationComplete = (_ result: GetFrontmostApplicationResult) -> Void
@@ -107,10 +107,10 @@ public class Device: NSObject, NSCopying {
         switch frida_device_get_dtype(handle) {
         case FRIDA_DEVICE_TYPE_LOCAL:
             return Kind.local
-        case FRIDA_DEVICE_TYPE_TETHER:
-            return Kind.tether
         case FRIDA_DEVICE_TYPE_REMOTE:
             return Kind.remote
+        case FRIDA_DEVICE_TYPE_USB:
+            return Kind.usb
         default:
             fatalError("Unexpected Frida Device kind")
         }
