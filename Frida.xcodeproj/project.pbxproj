@@ -438,7 +438,6 @@
 				OTHER_LDFLAGS = (
 					"-lbsm",
 					"-lresolv",
-					"-Wl,-no_compact_unwind",
 					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
@@ -476,7 +475,6 @@
 				OTHER_LDFLAGS = (
 					"-lbsm",
 					"-lresolv",
-					"-Wl,-no_compact_unwind",
 					"-Wl,-unexported_symbols_list,CFrida/CFrida.symbols",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
