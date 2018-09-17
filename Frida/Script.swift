@@ -10,6 +10,9 @@ public class Script: NSObject, NSCopying {
     public typealias UnloadComplete = (_ result: UnloadResult) -> Void
     public typealias UnloadResult = () throws -> Bool
 
+    public typealias EternalizeComplete = (_ result: EternalizeResult) -> Void
+    public typealias EternalizeResult = () throws -> Bool
+
     public typealias PostComplete = (_ result: PostResult) -> Void
     public typealias PostResult = () throws -> Bool
 
@@ -108,6 +111,28 @@ public class Script: NSObject, NSCopying {
                     operation.completionHandler { true }
                 }
             }, Unmanaged.passRetained(AsyncOperation<UnloadComplete>(completionHandler)).toOpaque())
+        }
+    }
+
+    public func eternalize(_ completionHandler: @escaping EternalizeComplete = { _ in }) {
+        Runtime.scheduleOnFridaThread {
+            frida_script_eternalize(self.handle, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<EternalizeComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_eternalize_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { true }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<EternalizeComplete>(completionHandler)).toOpaque())
         }
     }
 
