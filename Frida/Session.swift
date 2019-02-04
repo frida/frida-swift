@@ -18,7 +18,7 @@ public class Session: NSObject, NSCopying {
     public typealias EnableJitComplete = (_ result: EnableJitResult) -> Void
     public typealias EnableJitResult = () throws -> Bool
 
-    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ userData: gpointer) -> Void
+    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ crash: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
     private var onDetachedHandler: gulong = 0
@@ -174,7 +174,7 @@ public class Session: NSObject, NSCopying {
         }
     }
 
-    private let onDetached: DetachedHandler = { _, reason, userData in
+    private let onDetached: DetachedHandler = { _, reason, crash, userData in
         let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(userData).takeUnretainedValue()
 
         if let session = connection.instance {
