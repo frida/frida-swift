@@ -84,9 +84,15 @@ public class Session: NSObject, NSCopying {
         }
     }
 
-    public func createScript(_ name: String, source: String, completionHandler: @escaping CreateScriptComplete) {
+    public func createScript(_ source: String, name: String? = nil, completionHandler: @escaping CreateScriptComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_session_create_script(self.handle, name, source, { source, result, data in
+            let options = frida_script_options_new()
+
+            if let name = name {
+                frida_script_options_set_name(options, name)
+            }
+
+            frida_session_create_script(self.handle, source, options, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<CreateScriptComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -105,6 +111,8 @@ public class Session: NSObject, NSCopying {
                     operation.completionHandler { script }
                 }
             }, Unmanaged.passRetained(AsyncOperation<CreateScriptComplete>(completionHandler)).toOpaque())
+
+            g_object_unref(gpointer(options))
         }
     }
 
