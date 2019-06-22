@@ -24,7 +24,7 @@ class FridaTests: XCTestCase {
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
         // print("Got devices: \(devices)")
-        assert(devices.count > 0)
+        XCTAssert(devices.count > 0)
     }
 
     func testGetFrontmostApplication() {
@@ -34,15 +34,26 @@ class FridaTests: XCTestCase {
         var application: ApplicationDetails?
         manager.enumerateDevices { result in
             let devices = try! result()
-            let usbDevice = devices.filter { $0.kind == Device.Kind.usb }.first!
+            guard let usbDevice = devices.filter({ $0.kind == Device.Kind.usb }).first else {
+                print("No USB devices for test \(#function).")
+                expectation.fulfill()
+                return
+            }
             usbDevice.getFrontmostApplication() { result in
-                application = try! result()
+                do {
+                    application = try result()
+                } catch let error {
+                    XCTFail("Error getting frontmost application: \(error)")
+                }
                 expectation.fulfill()
             }
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        print("Got application: \(application.debugDescription)")
+        XCTAssertNotNil(application)
+        if let application = application {
+            print("Got application: \(application.debugDescription)")
+        }
     }
 
     func testEnumerateApplications() {
@@ -52,16 +63,26 @@ class FridaTests: XCTestCase {
         var applications = [ApplicationDetails]()
         manager.enumerateDevices { result in
             let devices = try! result()
-            let usbDevice = devices.filter { $0.kind == Device.Kind.usb }.first!
+            
+            guard let usbDevice = devices.filter({ $0.kind == Device.Kind.usb }).first else {
+                print("No USB devices for test \(#function).")
+                expectation.fulfill()
+                return
+            }
+            
             usbDevice.enumerateApplications() { result in
-                applications = try! result()
+                do {
+                    applications = try result()
+                } catch let error {
+                    XCTFail("Error enumerating applications: \(error)")
+                }
                 expectation.fulfill()
             }
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
         // print("Got applications: \(applications)")
-        assert(applications.count > 0)
+        XCTAssert(applications.count > 0)
     }
 
     func testEnumerateProcesses() {
@@ -80,7 +101,7 @@ class FridaTests: XCTestCase {
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
         // print("Got processes: \(processes)")
-        assert(processes.count > 0)
+        XCTAssert(processes.count > 0)
     }
 
     func xxxtestDetached() {
