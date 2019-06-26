@@ -299,7 +299,13 @@ public class Script: NSObject, NSCopying {
             request.received(result: result)
         }
         
-        post(message)
+        post(message, data: nil) { result in
+            do {
+                let _ = try result()
+            } catch let error {
+                request.received(result: .error(error: error.localizedDescription))
+            }
+        }
         return request
     }
 }
