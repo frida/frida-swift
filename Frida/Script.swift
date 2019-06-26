@@ -204,6 +204,43 @@ public class Script: NSObject, NSCopying {
             }
         }
 
+        if let dict = message as? [String: Any],
+            let type = dict["type"] as? String,
+            type == "send",
+            let payload = dict["payload"] as? [Any],
+            let kind = payload.first as? String,
+            kind == "frida:rpc",
+            let requestId = payload[1] as? Int,
+            let success = payload[2] as? String,
+            let script = connection.instance,
+            let callback = script.rpcCallbacks[requestId] {
+            
+            if success == "ok" {
+                var result: Any?
+                
+                if let data = data {
+                    result = data
+                } else if payload.count >= 4 {
+                    result = payload[3]
+                }
+                callback(.success(value: result))
+            } else {
+                let message: String
+                
+                if payload.count >= 3, let string = payload[2] as? String {
+                    message = string
+                } else if let string = payload[0] as? String {
+                    message = string
+                } else {
+                    message = "Failed to cast error message as string: \(payload)"
+                }
+                callback(.error(error: message))
+            }
+            
+            script.rpcCallbacks.removeValue(forKey: requestId)    
+            return
+        }
+        
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
                 script.delegate?.script?(script, didReceiveMessage: message, withData: data)
@@ -213,5 +250,56 @@ public class Script: NSObject, NSCopying {
 
     private let releaseConnection: GClosureNotify = { data, _ in
         Unmanaged<SignalConnection<Script>>.fromOpaque(data!).release()
+    }
+    
+    // MARK: - RPC Types
+    
+    @dynamicMemberLookup
+    public struct Exports {
+        unowned var script: Script?
+        
+        init(script: Script) {
+            self.script = script
+        }
+        
+        subscript(dynamicMember functionName: String) -> RpcFunction {
+            get {
+                return RpcFunction(script: self.script, functionName: functionName)
+            }
+        }
+    }
+    
+    // MARK: - RPC
+    
+    public lazy var exports: Exports = {
+        return Exports(script: self)
+    }()
+    internal typealias RpcInternalResultCallback = (_ result: RpcInternalResult) -> Void
+    private var rpcCallbacks: [Int: RpcInternalResultCallback] = [:]
+    private var requestId = 0
+    var nextRequestId: Int {
+        get {
+            let currentId = requestId
+            requestId += 1
+            return currentId
+        }
+    }
+    
+    internal func rpcPost(functionName: String, requestId: Int, values: [Any]) throws -> RpcRequest {
+        let message: [Any] = [
+            "frida:rpc",
+            requestId,
+            "call",
+            functionName,
+            values
+        ]
+        
+        let request = RpcRequest()
+        rpcCallbacks[requestId] = { result in
+            request.received(result: result)
+        }
+        
+        post(message)
+        return request
     }
 }

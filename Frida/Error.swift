@@ -14,4 +14,5 @@ public enum Error: Swift.Error {
     case notSupported(String)
     case protocolViolation(String)
     case transport(String)
+    case rpcError(String)
 }
