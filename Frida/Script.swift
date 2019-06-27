@@ -54,6 +54,10 @@ public class Script: NSObject, NSCopying {
         }
     }
 
+    public lazy var exports: Exports = {
+        return Exports(script: self)
+    }()
+
     public override var description: String {
         return "Frida.Script()"
     }
@@ -184,43 +188,13 @@ public class Script: NSObject, NSCopying {
             }
         }
     }
-    
-    // MARK: - Message Handling
 
-    enum FridaMessageType: String, Decodable {
-        case error
-        case log
-        case send
-    }
-    
-    enum FridaRpcKind: String, Decodable {
-        case fridaRpc = "frida:rpc"
-    }
-    
-    struct FridaRpcMessage: Decodable {
-        let type: FridaMessageType
-        let payload: FridaRpcPayload
-    }
-    
-    struct FridaRpcPayload: Decodable {
-        let kind: FridaRpcKind
-        let requestId: Int
-        let success: String
-        
-        init(from decoder: Decoder) throws{
-            var container = try decoder.unkeyedContainer()
-            kind = try container.decode(FridaRpcKind.self)
-            requestId = try container.decode(Int.self)
-            success = try container.decode(String.self)
-        }
-    }
-    
     private let onMessage: MessageHandler = { _, rawMessage, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         let messageData = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawMessage), count: Int(strlen(rawMessage)), deallocator: .none)
         let message = try! JSONSerialization.jsonObject(with: messageData, options: JSONSerialization.ReadingOptions())
-        
+
         var data: Data? = nil
         if let rawData = rawData {
             var size: gsize = 0
@@ -240,24 +214,26 @@ public class Script: NSObject, NSCopying {
             let script = connection.instance!
             let payload = (message as! [String: Any])["payload"] as! [Any]
             let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
-            if rpcMessage.payload.success == "ok" {
+            if rpcMessage.payload.status == .ok {
                 var result: Any?
                 if let data = data {
                     result = data
                 } else {
                     result = payload[3]
                 }
+
                 callback(.success(value: result))
             }
             else {
-                let error = rpcMessage.payload.success
+                let error = payload[3] as! String
+
                 callback(.error(error: error))
             }
-            
+
             script.rpcCallbacks.removeValue(forKey: rpcMessage.payload.requestId)
             return
         } catch {}
-        
+
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
                 script.delegate?.script?(script, didReceiveMessage: message, withData: data)
@@ -268,29 +244,24 @@ public class Script: NSObject, NSCopying {
     private let releaseConnection: GClosureNotify = { data, _ in
         Unmanaged<SignalConnection<Script>>.fromOpaque(data!).release()
     }
-    
-    // MARK: - RPC Types
-    
+
+    // MARK: - RPC
+
     @dynamicMemberLookup
     public struct Exports {
         unowned let script: Script
-        
+
         init(script: Script) {
             self.script = script
         }
-        
+
         subscript(dynamicMember functionName: String) -> RpcFunction {
             get {
                 return RpcFunction(script: self.script, functionName: functionName)
             }
         }
     }
-    
-    // MARK: - RPC
-    
-    public lazy var exports: Exports = {
-        return Exports(script: self)
-    }()
+
     internal typealias RpcInternalResultCallback = (_ result: RpcInternalResult) -> Void
     private var rpcCallbacks: [Int: RpcInternalResultCallback] = [:]
     private var requestId = 0
@@ -301,21 +272,21 @@ public class Script: NSObject, NSCopying {
             return currentId
         }
     }
-    
+
     internal func rpcPost(functionName: String, requestId: Int, values: [Any]) throws -> RpcRequest {
         let message: [Any] = [
-            "frida:rpc",
+            String(describing: FridaRpcKind.default),
             requestId,
-            "call",
+            String(describing: FridaRpcOperation.call),
             functionName,
             values
         ]
-        
+
         let request = RpcRequest()
         rpcCallbacks[requestId] = { result in
             request.received(result: result)
         }
-        
+
         post(message, data: nil) { result in
             do {
                 let _ = try result()
@@ -323,7 +294,53 @@ public class Script: NSObject, NSCopying {
                 request.received(result: .error(error: error.localizedDescription))
             }
         }
-
         return request
+    }
+
+    // MARK: - Private Types
+
+    private enum FridaMessageType: String, Decodable {
+        case error
+        case log
+        case send
+    }
+
+    private enum FridaRpcKind: String, Decodable, CustomStringConvertible {
+        case `default` = "frida:rpc"
+
+        var description: String {
+            return rawValue
+        }
+    }
+
+    private struct FridaRpcMessage: Decodable {
+        let type: FridaMessageType
+        let payload: FridaRpcPayload
+    }
+
+    private enum FridaRpcStatus: String, Decodable {
+        case ok
+        case error
+    }
+
+    private enum FridaRpcOperation: String, CustomStringConvertible {
+        case call
+
+        var description: String {
+            return rawValue
+        }
+    }
+
+    private struct FridaRpcPayload: Decodable {
+        let kind: FridaRpcKind
+        let requestId: Int
+        let status: FridaRpcStatus
+
+        init(from decoder: Decoder) throws{
+            var container = try decoder.unkeyedContainer()
+            kind = try container.decode(FridaRpcKind.self)
+            requestId = try container.decode(Int.self)
+            status = try container.decode(FridaRpcStatus.self)
+        }
     }
 }
