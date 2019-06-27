@@ -184,13 +184,43 @@ public class Script: NSObject, NSCopying {
             }
         }
     }
+    
+    // MARK: - Message Handling
 
+    enum FridaMessageType: String, Decodable {
+        case error
+        case log
+        case send
+    }
+    
+    enum FridaRpcKind: String, Decodable {
+        case fridaRpc = "frida:rpc"
+    }
+    
+    struct FridaRpcMessage: Decodable {
+        let type: FridaMessageType
+        let payload: FridaRpcPayload
+    }
+    
+    struct FridaRpcPayload: Decodable {
+        let kind: FridaRpcKind
+        let requestId: Int
+        let success: String
+        
+        init(from decoder: Decoder) throws{
+            var container = try decoder.unkeyedContainer()
+            kind = try container.decode(FridaRpcKind.self)
+            requestId = try container.decode(Int.self)
+            success = try container.decode(String.self)
+        }
+    }
+    
     private let onMessage: MessageHandler = { _, rawMessage, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         let messageData = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawMessage), count: Int(strlen(rawMessage)), deallocator: .none)
         let message = try! JSONSerialization.jsonObject(with: messageData, options: JSONSerialization.ReadingOptions())
-
+        
         var data: Data? = nil
         if let rawData = rawData {
             var size: gsize = 0
@@ -204,42 +234,29 @@ public class Script: NSObject, NSCopying {
             }
         }
 
-        if let dict = message as? [String: Any],
-            let type = dict["type"] as? String,
-            type == "send",
-            let payload = dict["payload"] as? [Any],
-            let kind = payload.first as? String,
-            kind == "frida:rpc",
-            let requestId = payload[1] as? Int,
-            let success = payload[2] as? String,
-            let script = connection.instance,
-            let callback = script.rpcCallbacks[requestId] {
-            
-            if success == "ok" {
+        let decoder = JSONDecoder()
+        do {
+            let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: messageData)
+            let script = connection.instance!
+            let payload = (message as! [String: Any])["payload"] as! [Any]
+            let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
+            if rpcMessage.payload.success == "ok" {
                 var result: Any?
-                
                 if let data = data {
                     result = data
-                } else if payload.count >= 4 {
+                } else {
                     result = payload[3]
                 }
                 callback(.success(value: result))
-            } else {
-                let message: String
-                
-                if payload.count >= 3, let string = payload[2] as? String {
-                    message = string
-                } else if let string = payload[0] as? String {
-                    message = string
-                } else {
-                    message = "Failed to cast error message as string: \(payload)"
-                }
-                callback(.error(error: message))
+            }
+            else {
+                let error = rpcMessage.payload.success
+                callback(.error(error: error))
             }
             
-            script.rpcCallbacks.removeValue(forKey: requestId)    
+            script.rpcCallbacks.removeValue(forKey: rpcMessage.payload.requestId)
             return
-        }
+        } catch {}
         
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
