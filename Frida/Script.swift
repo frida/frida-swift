@@ -273,7 +273,7 @@ public class Script: NSObject, NSCopying {
     
     @dynamicMemberLookup
     public struct Exports {
-        unowned var script: Script?
+        unowned let script: Script
         
         init(script: Script) {
             self.script = script
@@ -323,6 +323,7 @@ public class Script: NSObject, NSCopying {
                 request.received(result: .error(error: error.localizedDescription))
             }
         }
+
         return request
     }
 }

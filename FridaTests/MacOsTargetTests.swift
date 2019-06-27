@@ -70,7 +70,6 @@ class MacOsTargetTests: XCTestCase {
         guard localDeviceMaybe != nil else { return }
         localDevice = localDeviceMaybe
         
-        
         let binary = getProductsConfigurationDirectory().appendingPathComponent("TestTarget")
         let spawnExpectation = expectation(description: "Spawned binary.")
         var pidMaybe: UInt?
@@ -158,5 +157,4 @@ class MacOsTargetTests: XCTestCase {
         waitForExpectations(timeout: 2.0, handler: nil)
         session.detach()
     }
-    
 }
