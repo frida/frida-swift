@@ -11,6 +11,7 @@ class MacOsTargetTests: XCTestCase {
 
     override func tearDown() {
         manager.close()
+        session.detach()
     }
 
     func testReceiveMessage() {
@@ -28,7 +29,7 @@ class MacOsTargetTests: XCTestCase {
         waitForExpectations(timeout: 2.0, handler: nil)
     }
 
-    func testRpcCall() throws {
+    func testRpcCall() {
         let scriptContents = """
         rpc.exports = {
             add: function (a, b) {
@@ -42,7 +43,7 @@ class MacOsTargetTests: XCTestCase {
         let resultExpectation = expectation(description: "Received RPC result.")
         let add = script.exports.add
 
-        try add(5, 3).onResult(as: Int.self) { result in
+        add(5, 3).onResult(as: Int.self) { result in
             switch result {
             case let .success(value):
                 XCTAssertEqual(value, 5 + 3, "RPC Function called successfully.")
@@ -55,10 +56,10 @@ class MacOsTargetTests: XCTestCase {
         let missing = script.exports.missing
         let missingExpectation = expectation(description: "Received missing RPC result.")
 
-        try missing(0).onResult(as: Int.self) { result in
+        missing(0).onResult(as: Int.self) { result in
             switch result {
             case .success:
-                XCTFail("RPC call unexpectedly succeeded")
+                XCTFail("RPC call unexpectedly succeeded.")
             case .error:
                 break
             }
@@ -66,7 +67,40 @@ class MacOsTargetTests: XCTestCase {
         }
 
         waitForExpectations(timeout: 2.0, handler: nil)
-        session.detach()
+    }
+
+    func testRpcError() {
+        let scriptContents = """
+        rpc.exports = {
+            throwException: function () {
+                undefinedFunction();
+            }
+        };
+        """
+
+        spawnSessionWith(script: scriptContents)
+        script.load()
+
+        let resultExpectation = expectation(description: "Received RPC result.")
+        let throwException = script.exports.throwException
+
+        throwException().onResult(as: Int.self) { result in
+            switch result {
+            case .success:
+                XCTFail("RPC call unexpectedly succeeded.")
+            case let .error(untypedError):
+                guard case let Frida.Error.rpcError(_, stackTrace) = untypedError else {
+                    XCTFail("Didn't receive expected RPC error.")
+                    break
+                }
+
+                XCTAssertNotNil(stackTrace)
+            }
+
+            resultExpectation.fulfill()
+        }
+
+        waitForExpectations(timeout: 2.0, handler: nil)
     }
 
     // MARK: - Helper functions

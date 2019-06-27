@@ -15,18 +15,20 @@ public class RpcRequest {
     }
 
     public func onResult<T>(as: T.Type,
-                            callback: @escaping (RpcResult<T>) -> Void) throws {
+                            callback: @escaping (RpcResult<T>) -> Void) {
 
         let promise = { (result: RpcInternalResult) in
             switch result {
             case let .success(untypedValue):
                 guard let typedValue = untypedValue as? T else {
-                    callback(.error(Error.rpcError("Failed to cast \(String(describing: untypedValue)) to \(T.self)")))
+                    let error = Error.rpcError(message: "Failed to cast result \(String(describing: untypedValue)) to \(T.self)",
+                        stackTrace: nil)
+                    callback(.error(error))
                     return
                 }
                 callback(.success(typedValue))
             case let .error(error):
-                callback(.error(Error.rpcError(error)))
+                callback(.error(error))
             }
         }
 
@@ -45,5 +47,5 @@ public enum RpcResult<T> {
 
 internal enum RpcInternalResult {
     case success(value: Any?)
-    case error(error: String)
+    case error(Swift.Error)
 }

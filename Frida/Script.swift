@@ -212,8 +212,10 @@ public class Script: NSObject, NSCopying {
         do {
             let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: messageData)
             let script = connection.instance!
-            let payload = (message as! [String: Any])["payload"] as! [Any]
+            let messageDict = message as! [String: Any]
+            let payload = messageDict[FridaRpcMessage.CodingKeys.payload.rawValue] as! [Any]
             let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
+            
             if rpcMessage.payload.status == .ok {
                 var result: Any?
                 if let data = data {
@@ -223,11 +225,15 @@ public class Script: NSObject, NSCopying {
                 }
 
                 callback(.success(value: result))
-            }
-            else {
-                let error = payload[3] as! String
+            } else {
+                let errorMessage = payload[3] as! String
+                var stackTraceMaybe: String?
+                if payload.count >= 6 {
+                    stackTraceMaybe = (payload[5] as! String)
+                }
 
-                callback(.error(error: error))
+                let error = Error.rpcError(message: errorMessage, stackTrace: stackTraceMaybe)
+                callback(.error(error))
             }
 
             script.rpcCallbacks.removeValue(forKey: rpcMessage.payload.requestId)
@@ -273,7 +279,7 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    internal func rpcPost(functionName: String, requestId: Int, values: [Any]) throws -> RpcRequest {
+    internal func rpcPost(functionName: String, requestId: Int, values: [Any]) -> RpcRequest {
         let message: [Any] = [
             String(describing: FridaRpcKind.default),
             requestId,
@@ -291,7 +297,7 @@ public class Script: NSObject, NSCopying {
             do {
                 let _ = try result()
             } catch let error {
-                request.received(result: .error(error: error.localizedDescription))
+                request.received(result: .error(error))
             }
         }
         return request
@@ -316,6 +322,11 @@ public class Script: NSObject, NSCopying {
     private struct FridaRpcMessage: Decodable {
         let type: FridaMessageType
         let payload: FridaRpcPayload
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case payload
+        }
     }
 
     private enum FridaRpcStatus: String, Decodable {
