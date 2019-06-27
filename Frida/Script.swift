@@ -54,6 +54,10 @@ public class Script: NSObject, NSCopying {
         }
     }
 
+    public lazy var exports: Exports = {
+        return Exports(script: self)
+    }()
+
     public override var description: String {
         return "Frida.Script()"
     }
@@ -204,6 +208,38 @@ public class Script: NSObject, NSCopying {
             }
         }
 
+        let decoder = JSONDecoder()
+        do {
+            let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: messageData)
+            let script = connection.instance!
+            let messageDict = message as! [String: Any]
+            let payload = messageDict[FridaRpcMessage.CodingKeys.payload.rawValue] as! [Any]
+            let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
+            
+            if rpcMessage.payload.status == .ok {
+                var result: Any?
+                if let data = data {
+                    result = data
+                } else {
+                    result = payload[3]
+                }
+
+                callback(.success(value: result))
+            } else {
+                let errorMessage = payload[3] as! String
+                var stackTraceMaybe: String?
+                if payload.count >= 6 {
+                    stackTraceMaybe = (payload[5] as! String)
+                }
+
+                let error = Error.rpcError(message: errorMessage, stackTrace: stackTraceMaybe)
+                callback(.error(error))
+            }
+
+            script.rpcCallbacks.removeValue(forKey: rpcMessage.payload.requestId)
+            return
+        } catch {}
+
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
                 script.delegate?.script?(script, didReceiveMessage: message, withData: data)
@@ -213,5 +249,109 @@ public class Script: NSObject, NSCopying {
 
     private let releaseConnection: GClosureNotify = { data, _ in
         Unmanaged<SignalConnection<Script>>.fromOpaque(data!).release()
+    }
+
+    // MARK: - RPC
+
+    @dynamicMemberLookup
+    public struct Exports {
+        unowned let script: Script
+
+        init(script: Script) {
+            self.script = script
+        }
+
+        subscript(dynamicMember functionName: String) -> RpcFunction {
+            get {
+                return RpcFunction(script: self.script, functionName: functionName)
+            }
+        }
+    }
+
+    internal typealias RpcInternalResultCallback = (_ result: RpcInternalResult) -> Void
+    private var rpcCallbacks: [Int: RpcInternalResultCallback] = [:]
+    private var requestId = 0
+    var nextRequestId: Int {
+        get {
+            let currentId = requestId
+            requestId += 1
+            return currentId
+        }
+    }
+
+    internal func rpcPost(functionName: String, requestId: Int, values: [Any]) -> RpcRequest {
+        let message: [Any] = [
+            String(describing: FridaRpcKind.default),
+            requestId,
+            String(describing: FridaRpcOperation.call),
+            functionName,
+            values
+        ]
+
+        let request = RpcRequest()
+        rpcCallbacks[requestId] = { result in
+            request.received(result: result)
+        }
+
+        post(message, data: nil) { result in
+            do {
+                let _ = try result()
+            } catch let error {
+                request.received(result: .error(error))
+            }
+        }
+        return request
+    }
+
+    // MARK: - Private Types
+
+    private enum FridaMessageType: String, Decodable {
+        case error
+        case log
+        case send
+    }
+
+    private enum FridaRpcKind: String, Decodable, CustomStringConvertible {
+        case `default` = "frida:rpc"
+
+        var description: String {
+            return rawValue
+        }
+    }
+
+    private struct FridaRpcMessage: Decodable {
+        let type: FridaMessageType
+        let payload: FridaRpcPayload
+
+        enum CodingKeys: String, CodingKey {
+            case type
+            case payload
+        }
+    }
+
+    private enum FridaRpcStatus: String, Decodable {
+        case ok
+        case error
+    }
+
+    private enum FridaRpcOperation: String, CustomStringConvertible {
+        case call
+
+        var description: String {
+            return rawValue
+        }
+    }
+
+    private struct FridaRpcPayload: Decodable {
+        let kind: FridaRpcKind
+        let requestId: Int
+        let status: FridaRpcStatus
+
+        init(from decoder: Decoder) throws{
+            var container = try decoder.unkeyedContainer()
+            kind = try container.decode(FridaRpcKind.self)
+            requestId = try container.decode(Int.self)
+            status = try container.decode(FridaRpcStatus.self)
+        }
     }
 }
