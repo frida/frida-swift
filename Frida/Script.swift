@@ -76,7 +76,7 @@ public class Script: NSObject, NSCopying {
 
     public func load(_ completionHandler: @escaping LoadComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_script_load(self.handle, { source, result, data in
+            frida_script_load(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<LoadComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -98,7 +98,7 @@ public class Script: NSObject, NSCopying {
 
     public func unload(_ completionHandler: @escaping UnloadComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_script_unload(self.handle, { source, result, data in
+            frida_script_unload(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<UnloadComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -120,7 +120,7 @@ public class Script: NSObject, NSCopying {
 
     public func eternalize(_ completionHandler: @escaping EternalizeComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_script_eternalize(self.handle, { source, result, data in
+            frida_script_eternalize(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EternalizeComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -157,7 +157,7 @@ public class Script: NSObject, NSCopying {
 
             let rawData = Bytes.fromData(buffer: data)
 
-            frida_script_post(self.handle, rawMessage, rawData, { source, result, data in
+            frida_script_post(self.handle, rawMessage, rawData, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<PostComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil

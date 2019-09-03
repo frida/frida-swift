@@ -72,10 +72,10 @@ public class Session: NSObject, NSCopying {
 
     public func detach(_ completionHandler: @escaping DetachComplete = {}) {
         Runtime.scheduleOnFridaThread {
-            frida_session_detach(self.handle, { source, result, data in
+            frida_session_detach(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DetachComplete>>.fromOpaque(data!).takeRetainedValue()
 
-                frida_session_detach_finish(OpaquePointer(source), result)
+                frida_session_detach_finish(OpaquePointer(source), result, nil)
 
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler()
@@ -92,7 +92,7 @@ public class Session: NSObject, NSCopying {
                 frida_script_options_set_name(options, name)
             }
 
-            frida_session_create_script(self.handle, source, options, { source, result, data in
+            frida_session_create_script(self.handle, source, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<CreateScriptComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -118,7 +118,7 @@ public class Session: NSObject, NSCopying {
 
     public func enableDebugger(_ port: UInt16 = 0, completionHandler: @escaping EnableDebuggerComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_session_enable_debugger(self.handle, port, { source, result, data in
+            frida_session_enable_debugger(self.handle, port, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -140,7 +140,7 @@ public class Session: NSObject, NSCopying {
 
     public func disableDebugger(_ completionHandler: @escaping DisableDebuggerComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_session_disable_debugger(self.handle, { source, result, data in
+            frida_session_disable_debugger(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DisableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -162,7 +162,7 @@ public class Session: NSObject, NSCopying {
 
     public func enableJit(_ completionHandler: @escaping EnableJitComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_session_enable_jit(self.handle, { source, result, data in
+            frida_session_enable_jit(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnableJitComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil

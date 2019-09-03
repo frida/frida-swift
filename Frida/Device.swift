@@ -134,7 +134,7 @@ public class Device: NSObject, NSCopying {
 
     public func getFrontmostApplication(_ completionHandler: @escaping GetFrontmostApplicationComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_get_frontmost_application(self.handle, { source, result, data in
+            frida_device_get_frontmost_application(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<GetFrontmostApplicationComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -158,7 +158,7 @@ public class Device: NSObject, NSCopying {
 
     public func enumerateApplications(_ completionHandler: @escaping EnumerateApplicationsComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_applications(self.handle, { source, result, data in
+            frida_device_enumerate_applications(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateApplicationsComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -188,7 +188,7 @@ public class Device: NSObject, NSCopying {
 
     public func enumerateProcesses(_ completionHandler: @escaping EnumerateProcessesComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_processes(self.handle, { source, result, data in
+            frida_device_enumerate_processes(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateProcessesComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -218,7 +218,7 @@ public class Device: NSObject, NSCopying {
 
     public func enableSpawnGating(_ completionHandler: @escaping EnableSpawnGatingComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enable_spawn_gating(self.handle, { source, result, data in
+            frida_device_enable_spawn_gating(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnableSpawnGatingComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -240,7 +240,7 @@ public class Device: NSObject, NSCopying {
 
     public func disableSpawnGating(_ completionHandler: @escaping DisableSpawnGatingComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_disable_spawn_gating(self.handle, { source, result, data in
+            frida_device_disable_spawn_gating(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<DisableSpawnGatingComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -262,7 +262,7 @@ public class Device: NSObject, NSCopying {
 
     public func enumeratePendingSpawn(_ completionHandler: @escaping EnumeratePendingSpawnComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_pending_spawn(self.handle, { source, result, data in
+            frida_device_enumerate_pending_spawn(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumeratePendingSpawnComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -321,7 +321,7 @@ public class Device: NSObject, NSCopying {
                 frida_spawn_options_set_stdio(options, FridaStdio(UInt32(stdio.rawValue)))
             }
 
-            frida_device_spawn(self.handle, program, options, { source, result, data in
+            frida_device_spawn(self.handle, program, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<SpawnComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -346,7 +346,7 @@ public class Device: NSObject, NSCopying {
     public func input(_ pid: UInt, data: Data, completionHandler: @escaping InputComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             let rawData = Bytes.fromData(buffer: data)
-            frida_device_input(self.handle, guint(pid), rawData, { source, result, data in
+            frida_device_input(self.handle, guint(pid), rawData, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<InputComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -369,7 +369,7 @@ public class Device: NSObject, NSCopying {
 
     public func resume(_ pid: UInt, completionHandler: @escaping ResumeComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_resume(self.handle, guint(pid), { source, result, data in
+            frida_device_resume(self.handle, guint(pid), nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<ResumeComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -391,7 +391,7 @@ public class Device: NSObject, NSCopying {
 
     public func kill(_ pid: UInt, completionHandler: @escaping KillComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_kill(self.handle, guint(pid), { source, result, data in
+            frida_device_kill(self.handle, guint(pid), nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<KillComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -413,7 +413,7 @@ public class Device: NSObject, NSCopying {
 
     public func attach(_ pid: UInt, completionHandler: @escaping AttachComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_attach(self.handle, guint(pid), { source, result, data in
+            frida_device_attach(self.handle, guint(pid), nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil

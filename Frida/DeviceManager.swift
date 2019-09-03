@@ -81,10 +81,10 @@ public class DeviceManager: NSObject, NSCopying {
 
     public func close(_ completionHandler: @escaping CloseComplete = {}) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_close(self.handle, { source, result, data in
+            frida_device_manager_close(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<CloseComplete>>.fromOpaque(UnsafeRawPointer(data)!).takeRetainedValue()
 
-                frida_device_manager_close_finish(OpaquePointer(source), result)
+                frida_device_manager_close_finish(OpaquePointer(source), result, nil)
 
                 Runtime.scheduleOnMainThread {
                     operation.completionHandler()
@@ -95,7 +95,7 @@ public class DeviceManager: NSObject, NSCopying {
 
     public func enumerateDevices(_ completionHandler: @escaping EnumerateDevicesComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_enumerate_devices(self.handle, { source, result, data in
+            frida_device_manager_enumerate_devices(self.handle, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateDevicesComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -125,7 +125,7 @@ public class DeviceManager: NSObject, NSCopying {
 
     public func addRemoteDevice(_ host: String, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_add_remote_device(self.handle, host, { source, result, data in
+            frida_device_manager_add_remote_device(self.handle, host, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -149,7 +149,7 @@ public class DeviceManager: NSObject, NSCopying {
 
     public func removeRemoteDevice(_ host: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_remove_remote_device(self.handle, host, { source, result, data in
+            frida_device_manager_remove_remote_device(self.handle, host, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<RemoveRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
