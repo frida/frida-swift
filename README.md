@@ -1,6 +1,6 @@
 # frida-swift
 
-Swift bindings for [Frida](http://www.frida.re).
+Swift bindings for [Frida](https://frida.re).
 
 ## Install
 
