@@ -65,9 +65,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0C25738D1CAD790B0075F77A /* frida-core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "frida-core.h"; path = "macos-x86_64/frida-core.h"; sourceTree = "<group>"; };
-		0C25738E1CAD790B0075F77A /* libfrida-core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libfrida-core.a"; path = "macos-x86_64/libfrida-core.a"; sourceTree = "<group>"; };
-		0C25738F1CAD790B0075F77A /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = module.modulemap; path = "macos-x86_64/module.modulemap"; sourceTree = "<group>"; };
+		0C25738D1CAD790B0075F77A /* frida-core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "frida-core.h"; path = "frida-core.h"; sourceTree = "<group>"; };
+		0C25738E1CAD790B0075F77A /* libfrida-core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libfrida-core.a"; path = "libfrida-core.a"; sourceTree = "<group>"; };
+		0C25738F1CAD790B0075F77A /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = module.modulemap; path = "module.modulemap"; sourceTree = "<group>"; };
 		0C2573921CAD990A0075F77A /* Device.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
 		0C2573941CADA58B0075F77A /* Error.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
 		0C2573961CADB7C60075F77A /* Runtime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Runtime.swift; sourceTree = "<group>"; };
@@ -524,7 +524,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"CFrida/macos-$(CURRENT_ARCH)",
+					"CFrida",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
@@ -535,7 +535,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "CFrida/macos-x86_64";
+				SWIFT_INCLUDE_PATHS = "CFrida";
 				SWIFT_INSTALL_OBJC_HEADER = NO;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
@@ -562,7 +562,7 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"CFrida/macos-$(CURRENT_ARCH)",
+					"CFrida",
 				);
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
@@ -573,7 +573,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "CFrida/macos-x86_64";
+				SWIFT_INCLUDE_PATHS = "CFrida";
 				SWIFT_INSTALL_OBJC_HEADER = NO;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
