@@ -4,10 +4,10 @@ Swift bindings for [Frida](https://frida.re).
 
 ## Install
 
-- Build Frida for your Mac, e.g. `make core-macos-thin`
+- Build Frida for your Mac, e.g. `make core-macos`
 - Generate a devkit:
 
-    ./releng/devkit.py -t frida-core macos-x86_64 ./frida-swift/CFrida/
+    ./releng/devkit.py frida-core macos-x86_64 ./frida-swift/CFrida/
 
 - Open and build with Xcode.
 
