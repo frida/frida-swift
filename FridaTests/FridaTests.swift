@@ -20,10 +20,10 @@ class FridaTests: XCTestCase {
             devices = try! result()
             expectation.fulfill()
         }
-        manager.close()
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
         // print("Got devices: \(devices)")
+        manager.close()
         XCTAssert(devices.count > 0)
     }
 
