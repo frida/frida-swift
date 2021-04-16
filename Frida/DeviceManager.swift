@@ -123,9 +123,9 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
-    public func addRemoteDevice(_ location: String, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
+    public func addRemoteDevice(_ address: String, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_add_remote_device(self.handle, location, nil, { source, result, data in
+            frida_device_manager_add_remote_device(self.handle, address, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -147,9 +147,9 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
-    public func removeRemoteDevice(_ location: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
+    public func removeRemoteDevice(_ address: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_remove_remote_device(self.handle, location, nil, { source, result, data in
+            frida_device_manager_remove_remote_device(self.handle, address, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<RemoveRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
