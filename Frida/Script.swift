@@ -13,9 +13,6 @@ public class Script: NSObject, NSCopying {
     public typealias EternalizeComplete = (_ result: EternalizeResult) -> Void
     public typealias EternalizeResult = () throws -> Bool
 
-    public typealias PostComplete = (_ result: PostResult) -> Void
-    public typealias PostResult = () throws -> Bool
-
     private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
     private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ message: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
@@ -140,43 +137,15 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    public func post(_ message: Any, data: Data? = nil, completionHandler: @escaping PostComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            let operation = AsyncOperation<PostComplete>(completionHandler)
+    public func post(_ message: Any, data: Data? = nil) {
+        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
+        let json = String(data: jsonData, encoding: String.Encoding.utf8)!
 
-            var rawMessage: String
-            do {
-                let data = try JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
-                rawMessage = String(data: data, encoding: String.Encoding.utf8)!
-            } catch {
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { throw error }
-                }
-                return;
-            }
+        let rawData = Bytes.fromData(buffer: data)
 
-            let rawData = Bytes.fromData(buffer: data)
+        frida_script_post(self.handle, json, rawData)
 
-            frida_script_post(self.handle, rawMessage, rawData, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<PostComplete>>.fromOpaque(data!).takeRetainedValue()
-
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_post_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
-                    return
-                }
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(operation).toOpaque())
-
-            g_bytes_unref(rawData)
-        }
+        g_bytes_unref(rawData)
     }
 
     private let onDestroyed: DestroyHandler = { _, userData in
@@ -293,13 +262,8 @@ public class Script: NSObject, NSCopying {
             request.received(result: result)
         }
 
-        post(message, data: nil) { result in
-            do {
-                let _ = try result()
-            } catch let error {
-                request.received(result: .error(error))
-            }
-        }
+        post(message, data: nil)
+
         return request
     }
 

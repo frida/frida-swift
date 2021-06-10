@@ -125,7 +125,7 @@ public class DeviceManager: NSObject, NSCopying {
 
     public func addRemoteDevice(_ address: String, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_add_remote_device(self.handle, address, nil, { source, result, data in
+            frida_device_manager_add_remote_device(self.handle, address, nil, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil

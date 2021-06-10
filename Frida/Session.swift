@@ -15,9 +15,6 @@ public class Session: NSObject, NSCopying {
     public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
     public typealias DisableDebuggerResult = () throws -> Bool
 
-    public typealias EnableJitComplete = (_ result: EnableJitResult) -> Void
-    public typealias EnableJitResult = () throws -> Bool
-
     private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ crash: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
@@ -160,28 +157,6 @@ public class Session: NSObject, NSCopying {
         }
     }
 
-    public func enableJit(_ completionHandler: @escaping EnableJitComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_session_enable_jit(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnableJitComplete>>.fromOpaque(data!).takeRetainedValue()
-
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_session_enable_jit_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
-                    return
-                }
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnableJitComplete>(completionHandler)).toOpaque())
-        }
-    }
-
     private let onDetached: DetachedHandler = { _, reason, crash, userData in
         let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(userData).takeUnretainedValue()
 
@@ -202,16 +177,16 @@ public enum SessionDetachReason: Int, CustomStringConvertible {
     case applicationRequested = 1
     case processReplaced
     case processTerminated
-    case serverTerminated
-    case deviceGone
+    case connectionTerminated
+    case deviceLost
 
     public var description: String {
         switch self {
         case .applicationRequested: return "applicationRequested"
         case .processReplaced: return "processReplaced"
         case .processTerminated: return "processTerminated"
-        case .serverTerminated: return "serverTerminated"
-        case .deviceGone: return "deviceGone"
+        case .connectionTerminated: return "connectionTerminated"
+        case .deviceLost: return "deviceLost"
         }
     }
 }

@@ -413,7 +413,7 @@ public class Device: NSObject, NSCopying {
 
     public func attach(_ pid: UInt, completionHandler: @escaping AttachComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_attach(self.handle, guint(pid), FRIDA_REALM_NATIVE, nil, { source, result, data in
+            frida_device_attach(self.handle, guint(pid), nil, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
