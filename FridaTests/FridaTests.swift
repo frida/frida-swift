@@ -15,16 +15,48 @@ class FridaTests: XCTestCase {
         let expectation = self.expectation(description: "Got list of devices")
 
         let manager = DeviceManager()
-        var devices = [Device]()
+        var devices: [Device] = []
         manager.enumerateDevices { result in
             devices = try! result()
             expectation.fulfill()
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        // print("Got devices: \(devices)")
+
+        print("Got devices: \(devices)")
+        for device in devices {
+            print("\(device.name) Icon: \(String(describing: device.icon))")
+            device.querySystemParameters { result in
+                do {
+                    let parameters = try result()
+                    print("Device \(device.name) parameters: \(parameters)")
+                } catch let error {
+                    print("Failed to query system parameters for \(device.name): \(error)")
+                }
+            }
+        }
+
         manager.close()
         XCTAssert(devices.count > 0)
+    }
+
+    func testAddRemoteDevice() {
+        let manager = DeviceManager()
+
+        let expectation = self.expectation(description: "Got processes from remote server")
+        manager.addRemoteDevice(address: "::1", certificate: "/Users/oleavr/src/cert.pem", token: "letmein", keepaliveInterval: 5) { result in
+            let device = try! result()
+            device.enumerateProcesses { result in
+                do {
+                    let processes = try result()
+                    print("Got processes from remote server: \(processes)")
+                    expectation.fulfill()
+                } catch let error {
+                    XCTFail("Error getting processes from remote server: \(error)")
+                }
+            }
+        }
+        self.waitForExpectations(timeout: 5.0, handler: nil)
     }
 
     func testGetFrontmostApplication() {
@@ -39,7 +71,7 @@ class FridaTests: XCTestCase {
                 expectation.fulfill()
                 return
             }
-            usbDevice.getFrontmostApplication() { result in
+            usbDevice.getFrontmostApplication(scope: .full) { result in
                 do {
                     application = try result()
                 } catch let error {
@@ -60,17 +92,17 @@ class FridaTests: XCTestCase {
         let expectation = self.expectation(description: "Got list of applications")
 
         let manager = DeviceManager()
-        var applications = [ApplicationDetails]()
+        var applications: [ApplicationDetails] = []
         manager.enumerateDevices { result in
             let devices = try! result()
-            
+
             guard let usbDevice = devices.filter({ $0.kind == Device.Kind.usb }).first else {
                 print("No USB devices for test \(#function).")
                 expectation.fulfill()
                 return
             }
-            
-            usbDevice.enumerateApplications() { result in
+
+            usbDevice.enumerateApplications(scope: .full) { result in
                 do {
                     applications = try result()
                 } catch let error {
@@ -81,7 +113,12 @@ class FridaTests: XCTestCase {
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        // print("Got applications: \(applications)")
+
+        print("Got \(applications.count) applications")
+        for application in applications {
+            print(application)
+        }
+
         XCTAssert(applications.count > 0)
     }
 
@@ -89,18 +126,23 @@ class FridaTests: XCTestCase {
         let expectation = self.expectation(description: "Got list of processes")
 
         let manager = DeviceManager()
-        var processes = [ProcessDetails]()
+        var processes: [ProcessDetails] = []
         manager.enumerateDevices { result in
             let devices = try! result()
-            let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
-            localDevice.enumerateProcesses() { result in
+            let device = devices.filter { $0.kind == Device.Kind.usb }.first!
+            device.enumerateProcesses(pids: [38886, 1], scope: .full) { result in
                 processes = try! result()
                 expectation.fulfill()
             }
         }
 
         self.waitForExpectations(timeout: 5.0, handler: nil)
-        // print("Got processes: \(processes)")
+
+        print("Got \(processes.count) processes")
+        for process in processes {
+            print(process)
+        }
+
         XCTAssert(processes.count > 0)
     }
 
@@ -117,7 +159,7 @@ class FridaTests: XCTestCase {
                 self.expectation = expectation
             }
 
-            func session(_ session: Session, didDetach reason: SessionDetachReason) {
+            func session(_ session: Session, didDetach reason: SessionDetachReason, crash: CrashDetails?) {
                 self.reason = reason
                 expectation.fulfill()
             }
@@ -129,7 +171,7 @@ class FridaTests: XCTestCase {
         manager.enumerateDevices { result in
             let devices = try! result()
             let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
-            localDevice.attach(pid) { result in
+            localDevice.attach(to: pid) { result in
                 session = try! result()
                 session!.delegate = delegate
             }
@@ -146,7 +188,7 @@ class FridaTests: XCTestCase {
 
         class TestDelegate : ScriptDelegate {
             let expectation: XCTestExpectation
-            var messages = [Any]()
+            var messages: [Any] = []
 
             init(expectation: XCTestExpectation) {
                 self.expectation = expectation
@@ -171,7 +213,7 @@ class FridaTests: XCTestCase {
         manager.enumerateDevices { result in
             let devices = try! result()
             let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
-            localDevice.attach(pid) { result in
+            localDevice.attach(to: pid) { result in
                 let session = try! result()
                 session.createScript("console.log(\"hello\"); send(1337);", name: "test") { result in
                     let s = try! result()

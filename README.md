@@ -21,7 +21,7 @@ func testFullCycle() {
 
     class TestDelegate : ScriptDelegate {
         let expectation: XCTestExpectation
-        var messages = [Any]()
+        var messages: [Any] = []
 
         init(expectation: XCTestExpectation) {
             self.expectation = expectation
@@ -46,9 +46,9 @@ func testFullCycle() {
     manager.enumerateDevices { result in
         let devices = try! result()
         let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
-        localDevice.attach(pid) { result in
+        localDevice.attach(to: pid) { result in
             let session = try! result()
-            session.createScript("test", source: "console.log(\"hello\"); send(1337);") { result in
+            session.createScript("console.log(\"hello\"); send(1337);") { result in
                 let s = try! result()
                 s.delegate = delegate
                 s.load() { result in

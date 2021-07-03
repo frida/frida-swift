@@ -14,7 +14,7 @@ public class Script: NSObject, NSCopying {
     public typealias EternalizeResult = () throws -> Bool
 
     private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ message: UnsafePointer<gchar>,
+    private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ json: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
@@ -141,9 +141,9 @@ public class Script: NSObject, NSCopying {
         let jsonData = try! JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
         let json = String(data: jsonData, encoding: String.Encoding.utf8)!
 
-        let rawData = Bytes.fromData(buffer: data)
+        let rawData = Marshal.bytesFromData(data)
 
-        frida_script_post(self.handle, json, rawData)
+        frida_script_post(handle, json, rawData)
 
         g_bytes_unref(rawData)
     }
@@ -158,33 +158,22 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    private let onMessage: MessageHandler = { _, rawMessage, rawData, userData in
+    private let onMessage: MessageHandler = { _, rawJson, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
-        let messageData = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawMessage), count: Int(strlen(rawMessage)), deallocator: .none)
-        let message = try! JSONSerialization.jsonObject(with: messageData, options: JSONSerialization.ReadingOptions())
+        let json = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawJson), count: Int(strlen(rawJson)), deallocator: .none)
+        let message = try! JSONSerialization.jsonObject(with: json, options: JSONSerialization.ReadingOptions())
 
-        var data: Data? = nil
-        if let rawData = rawData {
-            var size: gsize = 0
-            if let rawDataBytes = g_bytes_get_data(rawData, &size), size > 0 {
-                g_bytes_ref(rawData)
-                data = Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: rawDataBytes), count: Int(size), deallocator: .custom({ (ptr, size) in
-                    g_bytes_unref(rawData)
-                }))
-            } else {
-                data = Data()
-            }
-        }
+        let data = Marshal.dataFromBytes(rawData)
 
         let decoder = JSONDecoder()
         do {
-            let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: messageData)
+            let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: json)
             let script = connection.instance!
             let messageDict = message as! [String: Any]
             let payload = messageDict[FridaRpcMessage.CodingKeys.payload.rawValue] as! [Any]
             let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
-            
+
             if rpcMessage.payload.status == .ok {
                 var result: Any?
                 if let data = data {

@@ -10,6 +10,9 @@ public class Device: NSObject, NSCopying {
         case usb
     }
 
+    public typealias QuerySystemParametersComplete = (_ result: QuerySystemParametersResult) -> Void
+    public typealias QuerySystemParametersResult = () throws -> [String: Any]
+
     public typealias GetFrontmostApplicationComplete = (_ result: GetFrontmostApplicationResult) -> Void
     public typealias GetFrontmostApplicationResult = () throws -> ApplicationDetails?
 
@@ -28,6 +31,9 @@ public class Device: NSObject, NSCopying {
     public typealias EnumeratePendingSpawnComplete = (_ result: EnumeratePendingSpawnResult) -> Void
     public typealias EnumeratePendingSpawnResult = () throws -> [SpawnDetails]
 
+    public typealias EnumeratePendingChildrenComplete = (_ result: EnumeratePendingChildrenResult) -> Void
+    public typealias EnumeratePendingChildrenResult = () throws -> [ChildDetails]
+
     public typealias SpawnComplete = (_ result: SpawnResult) -> Void
     public typealias SpawnResult = () throws -> UInt
 
@@ -43,16 +49,33 @@ public class Device: NSObject, NSCopying {
     public typealias AttachComplete = (_ result: AttachResult) -> Void
     public typealias AttachResult = () throws -> Session
 
+    public typealias InjectLibraryFileComplete = (_ result: InjectLibraryFileResult) -> Void
+    public typealias InjectLibraryFileResult = () throws -> UInt
+
+    public typealias InjectLibraryBlobComplete = (_ result: InjectLibraryBlobResult) -> Void
+    public typealias InjectLibraryBlobResult = () throws -> UInt
+
+    public typealias OpenChannelComplete = (_ result: OpenChannelResult) -> Void
+    public typealias OpenChannelResult = () throws -> IOStream
+
     private typealias SpawnAddedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
     private typealias SpawnRemovedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias ChildAddedHandler = @convention(c) (_ device: OpaquePointer, _ child: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias ChildRemovedHandler = @convention(c) (_ device: OpaquePointer, _ child: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias ProcessCrashedHandler = @convention(c) (_ device: OpaquePointer, _ crash: OpaquePointer, _ userData: gpointer) -> Void
     private typealias OutputHandler = @convention(c) (_ device: OpaquePointer, _ pid: guint, _ fd: gint,
         _ data: UnsafePointer<guint8>, _ dataSize: gint, _ userData: gpointer) -> Void
+    private typealias UninjectedHandler = @convention(c) (_ device: OpaquePointer, _ id: guint, _ userData: gpointer) -> Void
     private typealias LostHandler = @convention(c) (_ device: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
     private var onSpawnAddedHandler: gulong = 0
     private var onSpawnRemovedHandler: gulong = 0
+    private var onChildAddedHandler: gulong = 0
+    private var onChildRemovedHandler: gulong = 0
+    private var onProcessCrashedHandler: gulong = 0
     private var onOutputHandler: gulong = 0
+    private var onUninjectedHandler: gulong = 0
     private var onLostHandler: gulong = 0
 
     init(handle: OpaquePointer) {
@@ -67,9 +90,21 @@ public class Device: NSObject, NSCopying {
         onSpawnRemovedHandler = g_signal_connect_data(rawHandle, "spawn-removed", unsafeBitCast(onSpawnRemoved, to: GCallback.self),
                                                       gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                       releaseConnection, GConnectFlags(0))
+        onChildAddedHandler = g_signal_connect_data(rawHandle, "child-added", unsafeBitCast(onChildAdded, to: GCallback.self),
+                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                    releaseConnection, GConnectFlags(0))
+        onChildRemovedHandler = g_signal_connect_data(rawHandle, "child-removed", unsafeBitCast(onChildRemoved, to: GCallback.self),
+                                                      gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                      releaseConnection, GConnectFlags(0))
+        onProcessCrashedHandler = g_signal_connect_data(rawHandle, "process-crashed", unsafeBitCast(onProcessCrashed, to: GCallback.self),
+                                                        gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                        releaseConnection, GConnectFlags(0))
         onOutputHandler = g_signal_connect_data(rawHandle, "output", unsafeBitCast(onOutput, to: GCallback.self),
                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                 releaseConnection, GConnectFlags(0))
+        onUninjectedHandler = g_signal_connect_data(rawHandle, "uninjected", unsafeBitCast(onUninjected, to: GCallback.self),
+                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                    releaseConnection, GConnectFlags(0))
         onLostHandler = g_signal_connect_data(rawHandle, "lost", unsafeBitCast(onLost, to: GCallback.self),
                                               gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                               releaseConnection, GConnectFlags(0))
@@ -82,7 +117,8 @@ public class Device: NSObject, NSCopying {
 
     deinit {
         let rawHandle = gpointer(handle)
-        let handlers = [onSpawnAddedHandler, onSpawnRemovedHandler, onOutputHandler, onLostHandler]
+        let handlers = [onSpawnAddedHandler, onSpawnRemovedHandler, onChildAddedHandler, onChildRemovedHandler, onProcessCrashedHandler,
+                        onOutputHandler, onUninjectedHandler, onLostHandler]
         Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
@@ -99,9 +135,13 @@ public class Device: NSObject, NSCopying {
         return String(cString: frida_device_get_name(handle))
     }
 
-    public var icon: NSImage? {
-        return Marshal.imageFromIcon(frida_device_get_icon(handle))
-    }
+    public lazy var icon: NSImage? = {
+        guard let iconVariant = frida_device_get_icon(handle) else {
+            return nil
+        }
+        let iconDict = Marshal.valueFromVariant(iconVariant) as! [String: Any];
+        return Marshal.iconFromVarDict(iconDict)
+    }()
 
     public var kind: Kind {
         switch frida_device_get_dtype(handle) {
@@ -114,6 +154,16 @@ public class Device: NSObject, NSCopying {
         default:
             fatalError("Unexpected Frida Device kind")
         }
+    }
+
+    public lazy var bus: Bus = {
+        let handle = frida_device_get_bus(handle)!
+        g_object_ref(gpointer(handle))
+        return Bus(handle: handle)
+    }()
+
+    public var isLost: Bool {
+        return frida_device_is_lost(handle) != 0
     }
 
     public override var description: String {
@@ -132,9 +182,44 @@ public class Device: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func getFrontmostApplication(_ completionHandler: @escaping GetFrontmostApplicationComplete) {
+    public func querySystemParameters(_ completionHandler: @escaping QuerySystemParametersComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_get_frontmost_application(self.handle, nil, { source, result, data in
+            frida_device_query_system_parameters(self.handle, nil, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<QuerySystemParametersComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawParameters = frida_device_query_system_parameters_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                let parameters = Marshal.dictionaryFromParametersDict(rawParameters!)
+
+                g_hash_table_unref(rawParameters!)
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { parameters }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<QuerySystemParametersComplete>(completionHandler)).toOpaque())
+        }
+    }
+
+    public func getFrontmostApplication(scope: Scope? = nil, _ completionHandler: @escaping GetFrontmostApplicationComplete) {
+        Runtime.scheduleOnFridaThread {
+            let options = frida_frontmost_query_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
+
+            if let scope = scope {
+                frida_frontmost_query_options_set_scope(options, FridaScope(scope.rawValue))
+            }
+
+            frida_device_get_frontmost_application(self.handle, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<GetFrontmostApplicationComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -156,9 +241,22 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func enumerateApplications(_ completionHandler: @escaping EnumerateApplicationsComplete) {
+    public func enumerateApplications(identifiers: [String]? = nil, scope: Scope? = nil, _ completionHandler: @escaping EnumerateApplicationsComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_applications(self.handle, nil, { source, result, data in
+            let options = frida_application_query_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
+
+            for identifier in identifiers ?? [] {
+                frida_application_query_options_select_identifier(options, identifier)
+            }
+
+            if let scope = scope {
+                frida_application_query_options_set_scope(options, FridaScope(scope.rawValue))
+            }
+
+            frida_device_enumerate_applications(self.handle, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateApplicationsComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -171,10 +269,10 @@ public class Device: NSObject, NSCopying {
                     return
                 }
 
-                var applications = [ApplicationDetails]()
-                let numberOfApplications = frida_application_list_size(rawApplications)
-                for index in 0..<numberOfApplications {
-                    let application = ApplicationDetails(handle: frida_application_list_get(rawApplications, index))
+                var applications: [ApplicationDetails] = []
+                let n = frida_application_list_size(rawApplications)
+                for i in 0..<n {
+                    let application = ApplicationDetails(handle: frida_application_list_get(rawApplications, i))
                     applications.append(application)
                 }
                 g_object_unref(gpointer(rawApplications))
@@ -186,9 +284,22 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func enumerateProcesses(_ completionHandler: @escaping EnumerateProcessesComplete) {
+    public func enumerateProcesses(pids: [UInt]? = nil, scope: Scope? = nil, _ completionHandler: @escaping EnumerateProcessesComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_processes(self.handle, nil, { source, result, data in
+            let options = frida_process_query_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
+
+            for pid in pids ?? [] {
+                frida_process_query_options_select_pid(options, guint(pid))
+            }
+
+            if let scope = scope {
+                frida_process_query_options_set_scope(options, FridaScope(scope.rawValue))
+            }
+
+            frida_device_enumerate_processes(self.handle, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<EnumerateProcessesComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -201,10 +312,10 @@ public class Device: NSObject, NSCopying {
                     return
                 }
 
-                var processes = [ProcessDetails]()
-                let numberOfProcesses = frida_process_list_size(rawProcesses)
-                for index in 0..<numberOfProcesses {
-                    let process = ProcessDetails(handle: frida_process_list_get(rawProcesses, index))
+                var processes: [ProcessDetails] = []
+                let n = frida_process_list_size(rawProcesses)
+                for i in 0..<n {
+                    let process = ProcessDetails(handle: frida_process_list_get(rawProcesses, i))
                     processes.append(process)
                 }
                 g_object_unref(gpointer(rawProcesses))
@@ -275,10 +386,10 @@ public class Device: NSObject, NSCopying {
                     return
                 }
 
-                var spawn = [SpawnDetails]()
-                let numberOfSpawn = frida_spawn_list_size(rawSpawn)
-                for index in 0..<numberOfSpawn {
-                    let details = SpawnDetails(handle: frida_spawn_list_get(rawSpawn, index))
+                var spawn: [SpawnDetails] = []
+                let n = frida_spawn_list_size(rawSpawn)
+                for i in 0..<n {
+                    let details = SpawnDetails(handle: frida_spawn_list_get(rawSpawn, i))
                     spawn.append(details)
                 }
                 g_object_unref(gpointer(rawSpawn))
@@ -290,10 +401,43 @@ public class Device: NSObject, NSCopying {
         }
     }
 
+    public func enumeratePendingChildren(_ completionHandler: @escaping EnumeratePendingChildrenComplete) {
+        Runtime.scheduleOnFridaThread {
+            frida_device_enumerate_pending_children(self.handle, nil, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<EnumeratePendingChildrenComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawChildren = frida_device_enumerate_pending_children_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                var children: [ChildDetails] = []
+                let n = frida_child_list_size(rawChildren)
+                for i in 0..<n {
+                    let details = ChildDetails(handle: frida_child_list_get(rawChildren, i))
+                    children.append(details)
+                }
+                g_object_unref(gpointer(rawChildren))
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { children }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<EnumeratePendingChildrenComplete>(completionHandler)).toOpaque())
+        }
+    }
+
     public func spawn(_ program: String, argv: [String]? = nil, envp: [String: String]? = nil, env: [String: String]? = nil,
                       cwd: String? = nil, stdio: Stdio? = nil, completionHandler: @escaping SpawnComplete) {
         Runtime.scheduleOnFridaThread {
             let options = frida_spawn_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
 
             let (rawArgv, argvLength) = Marshal.strvFromArray(argv)
             if let rawArgv = rawArgv {
@@ -318,7 +462,7 @@ public class Device: NSObject, NSCopying {
             }
 
             if let stdio = stdio {
-                frida_spawn_options_set_stdio(options, FridaStdio(UInt32(stdio.rawValue)))
+                frida_spawn_options_set_stdio(options, FridaStdio(stdio.rawValue))
             }
 
             frida_device_spawn(self.handle, program, options, nil, { source, result, data in
@@ -338,14 +482,12 @@ public class Device: NSObject, NSCopying {
                     operation.completionHandler { UInt(pid) }
                 }
             }, Unmanaged.passRetained(AsyncOperation<SpawnComplete>(completionHandler)).toOpaque())
-
-            g_object_unref(gpointer(options))
         }
     }
 
     public func input(_ pid: UInt, data: Data, completionHandler: @escaping InputComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            let rawData = Bytes.fromData(buffer: data)
+            let rawData = Marshal.bytesFromData(data)
             frida_device_input(self.handle, guint(pid), rawData, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<InputComplete>>.fromOpaque(data!).takeRetainedValue()
 
@@ -411,9 +553,22 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public func attach(_ pid: UInt, completionHandler: @escaping AttachComplete) {
+    public func attach(to pid: UInt, realm: Realm? = nil, persistTimeout: UInt? = nil, completionHandler: @escaping AttachComplete) {
         Runtime.scheduleOnFridaThread {
-            frida_device_attach(self.handle, guint(pid), nil, nil, { source, result, data in
+            let options = frida_session_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
+
+            if let realm = realm {
+                frida_session_options_set_realm(options, FridaRealm(realm.rawValue))
+            }
+
+            if let persistTimeout = persistTimeout {
+                frida_session_options_set_persist_timeout(options, guint(persistTimeout))
+            }
+
+            frida_device_attach(self.handle, guint(pid), options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -432,6 +587,80 @@ public class Device: NSObject, NSCopying {
                     operation.completionHandler { session }
                 }
             }, Unmanaged.passRetained(AsyncOperation<AttachComplete>(completionHandler)).toOpaque())
+        }
+    }
+
+    public func injectLibraryFileFile(into pid: UInt, path: String, entrypoint: String, data: String, completionHandler: @escaping InjectLibraryFileComplete) {
+        Runtime.scheduleOnFridaThread {
+            frida_device_inject_library_file(self.handle, guint(pid), path, entrypoint, data, nil, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<InjectLibraryFileComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawId = frida_device_inject_library_file_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                let id = UInt(rawId)
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { id }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<InjectLibraryFileComplete>(completionHandler)).toOpaque())
+        }
+    }
+
+    public func injectLibraryBlobBlob(into pid: UInt, blob: Data, entrypoint: String, data: String, completionHandler: @escaping InjectLibraryBlobComplete) {
+        Runtime.scheduleOnFridaThread {
+            let rawBlob = Marshal.bytesFromData(blob)
+            frida_device_inject_library_blob(self.handle, guint(pid), rawBlob, entrypoint, data, nil, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<InjectLibraryBlobComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawId = frida_device_inject_library_blob_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                let id = UInt(rawId)
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { id }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<InjectLibraryBlobComplete>(completionHandler)).toOpaque())
+            g_bytes_unref(rawBlob)
+        }
+    }
+
+    public func openChannel(_ address: String, completionHandler: @escaping OpenChannelComplete) {
+        Runtime.scheduleOnFridaThread {
+            frida_device_open_channel(self.handle, address, nil, { source, result, data in
+                let operation = Unmanaged<AsyncOperation<OpenChannelComplete>>.fromOpaque(data!).takeRetainedValue()
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawStream = frida_device_open_channel_finish(OpaquePointer(source), result, &rawError)
+                if let rawError = rawError {
+                    let error = Marshal.takeNativeError(rawError)
+                    Runtime.scheduleOnMainThread {
+                        operation.completionHandler { throw error }
+                    }
+                    return
+                }
+
+                let stream = IOStream(handle: rawStream!)
+
+                Runtime.scheduleOnMainThread {
+                    operation.completionHandler { stream }
+                }
+            }, Unmanaged.passRetained(AsyncOperation<OpenChannelComplete>(completionHandler)).toOpaque())
         }
     }
 
@@ -461,6 +690,45 @@ public class Device: NSObject, NSCopying {
         }
     }
 
+    private let onChildAdded: ChildAddedHandler = { _, rawChild, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        g_object_ref(gpointer(rawChild))
+        let child = ChildDetails(handle: rawChild)
+
+        if let device = connection.instance {
+            Runtime.scheduleOnMainThread {
+                device.delegate?.device?(device, didAddChild: child)
+            }
+        }
+    }
+
+    private let onChildRemoved: ChildRemovedHandler = { _, rawChild, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        g_object_ref(gpointer(rawChild))
+        let child = ChildDetails(handle: rawChild)
+
+        if let device = connection.instance {
+            Runtime.scheduleOnMainThread {
+                device.delegate?.device?(device, didRemoveChild: child)
+            }
+        }
+    }
+
+    private let onProcessCrashed: ProcessCrashedHandler = { _, rawCrash, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        g_object_ref(gpointer(rawCrash))
+        let crash = CrashDetails(handle: rawCrash)
+
+        if let device = connection.instance {
+            Runtime.scheduleOnMainThread {
+                device.delegate?.device?(device, didObserveCrash: crash)
+            }
+        }
+    }
+
     private let onOutput: OutputHandler = { _, pid, fd, rawData, rawDataSize, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
@@ -469,6 +737,16 @@ public class Device: NSObject, NSCopying {
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
                 device.delegate?.device?(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
+            }
+        }
+    }
+
+    private let onUninjected: UninjectedHandler = { _, id, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        if let device = connection.instance {
+            Runtime.scheduleOnMainThread {
+                device.delegate?.device?(device, didUninject: UInt(id))
             }
         }
     }
@@ -488,8 +766,23 @@ public class Device: NSObject, NSCopying {
     }
 }
 
+@objc(FridaScope)
+public enum Scope: UInt32, CustomStringConvertible {
+    case minimal
+    case metadata
+    case full
+
+    public var description: String {
+        switch self {
+        case .minimal: return "minimal"
+        case .metadata: return "metadata"
+        case .full: return "full"
+        }
+    }
+}
+
 @objc(FridaStdio)
-public enum Stdio: Int, CustomStringConvertible {
+public enum Stdio: UInt32, CustomStringConvertible {
     case inherit
     case pipe
 
@@ -497,6 +790,19 @@ public enum Stdio: Int, CustomStringConvertible {
         switch self {
         case .inherit: return "inherit"
         case .pipe: return "pipe"
+        }
+    }
+}
+
+@objc(FridaRealm)
+public enum Realm: UInt32, CustomStringConvertible {
+    case native
+    case emulated
+
+    public var description: String {
+        switch self {
+        case .native: return "native"
+        case .emulated: return "emulated"
         }
     }
 }

@@ -20,7 +20,6 @@
 		0C3DE4EA1CB1B4570091AC08 /* SpawnDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */; };
 		0C3DE4EC1CB1C3F60091AC08 /* DeviceDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4EB1CB1C3F60091AC08 /* DeviceDelegate.swift */; };
 		0C3DE4EE1CB1D3C70091AC08 /* SessionDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */; };
-		0C4D03C91DA2A00B00A863C7 /* Bytes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C4D03C81DA2A00B00A863C7 /* Bytes.swift */; };
 		0C5A27BD1CA6F127004D820F /* DeviceManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C5A27BC1CA6F127004D820F /* DeviceManager.swift */; };
 		0C9289381CA6F06C00FBA302 /* Frida.h in Headers */ = {isa = PBXBuildFile; fileRef = 0C9289371CA6F06C00FBA302 /* Frida.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		0C92893F1CA6F06C00FBA302 /* Frida.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0C9289341CA6F06C00FBA302 /* Frida.framework */; };
@@ -29,6 +28,13 @@
 		0CA4A1321CADF2B1006A32C4 /* Script.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1311CADF2B1006A32C4 /* Script.swift */; };
 		0CA4A1341CADFAD4006A32C4 /* ScriptDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */; };
 		0CA4A1361CADFEE4006A32C4 /* SignalConnection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */; };
+		0CBD153B268FB9EF00C80070 /* CrashDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CBD153A268FB9EF00C80070 /* CrashDetails.swift */; };
+		0CBD153D268FBECF00C80070 /* ChildDetails.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CBD153C268FBECF00C80070 /* ChildDetails.swift */; };
+		0CD8B80F268FD9160051FE73 /* IOStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8B80E268FD9160051FE73 /* IOStream.swift */; };
+		0CD8B811268FEED40051FE73 /* Bus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8B810268FEED40051FE73 /* Bus.swift */; };
+		0CD8B813268FF2110051FE73 /* BusDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8B812268FF2110051FE73 /* BusDelegate.swift */; };
+		0CD8B816268FFFDE0051FE73 /* PortalMembership.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8B814268FFFDE0051FE73 /* PortalMembership.swift */; };
+		0CD8B817268FFFDE0051FE73 /* Relay.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD8B815268FFFDE0051FE73 /* Relay.swift */; };
 		FA517E9422C41250009A9A0E /* RpcRequest.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA517E9322C41250009A9A0E /* RpcRequest.swift */; };
 		FA517E9622C4129A009A9A0E /* RpcFunction.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA517E9522C4129A009A9A0E /* RpcFunction.swift */; };
 		FA517E9E22C41380009A9A0E /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = FA517E9D22C41380009A9A0E /* main.m */; };
@@ -65,9 +71,9 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		0C25738D1CAD790B0075F77A /* frida-core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = "frida-core.h"; path = "frida-core.h"; sourceTree = "<group>"; };
-		0C25738E1CAD790B0075F77A /* libfrida-core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = "libfrida-core.a"; path = "libfrida-core.a"; sourceTree = "<group>"; };
-		0C25738F1CAD790B0075F77A /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; name = module.modulemap; path = "module.modulemap"; sourceTree = "<group>"; };
+		0C25738D1CAD790B0075F77A /* frida-core.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "frida-core.h"; sourceTree = "<group>"; };
+		0C25738E1CAD790B0075F77A /* libfrida-core.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = "libfrida-core.a"; sourceTree = "<group>"; };
+		0C25738F1CAD790B0075F77A /* module.modulemap */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = "sourcecode.module-map"; path = module.modulemap; sourceTree = "<group>"; };
 		0C2573921CAD990A0075F77A /* Device.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Device.swift; sourceTree = "<group>"; };
 		0C2573941CADA58B0075F77A /* Error.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
 		0C2573961CADB7C60075F77A /* Runtime.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Runtime.swift; sourceTree = "<group>"; };
@@ -79,7 +85,6 @@
 		0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SpawnDetails.swift; sourceTree = "<group>"; };
 		0C3DE4EB1CB1C3F60091AC08 /* DeviceDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceDelegate.swift; sourceTree = "<group>"; };
 		0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SessionDelegate.swift; sourceTree = "<group>"; };
-		0C4D03C81DA2A00B00A863C7 /* Bytes.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Bytes.swift; sourceTree = "<group>"; };
 		0C5A27BC1CA6F127004D820F /* DeviceManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DeviceManager.swift; sourceTree = "<group>"; };
 		0C9289341CA6F06C00FBA302 /* Frida.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Frida.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		0C9289371CA6F06C00FBA302 /* Frida.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Frida.h; sourceTree = "<group>"; };
@@ -91,6 +96,13 @@
 		0CA4A1311CADF2B1006A32C4 /* Script.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Script.swift; sourceTree = "<group>"; };
 		0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ScriptDelegate.swift; sourceTree = "<group>"; };
 		0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = SignalConnection.swift; sourceTree = "<group>"; };
+		0CBD153A268FB9EF00C80070 /* CrashDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = CrashDetails.swift; sourceTree = "<group>"; };
+		0CBD153C268FBECF00C80070 /* ChildDetails.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ChildDetails.swift; sourceTree = "<group>"; };
+		0CD8B80E268FD9160051FE73 /* IOStream.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = IOStream.swift; sourceTree = "<group>"; };
+		0CD8B810268FEED40051FE73 /* Bus.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Bus.swift; sourceTree = "<group>"; };
+		0CD8B812268FF2110051FE73 /* BusDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = BusDelegate.swift; sourceTree = "<group>"; };
+		0CD8B814268FFFDE0051FE73 /* PortalMembership.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PortalMembership.swift; sourceTree = "<group>"; };
+		0CD8B815268FFFDE0051FE73 /* Relay.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Relay.swift; sourceTree = "<group>"; };
 		FA517E9322C41250009A9A0E /* RpcRequest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RpcRequest.swift; sourceTree = "<group>"; };
 		FA517E9522C4129A009A9A0E /* RpcFunction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RpcFunction.swift; sourceTree = "<group>"; };
 		FA517E9B22C41380009A9A0E /* TestTarget */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = TestTarget; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -159,7 +171,6 @@
 		0C9289361CA6F06C00FBA302 /* Frida */ = {
 			isa = PBXGroup;
 			children = (
-				0C2573941CADA58B0075F77A /* Error.swift */,
 				0C9289371CA6F06C00FBA302 /* Frida.h */,
 				0C9289391CA6F06C00FBA302 /* Info.plist */,
 				0C5A27BC1CA6F127004D820F /* DeviceManager.swift */,
@@ -169,14 +180,21 @@
 				0CA4A12F1CADF094006A32C4 /* Session.swift */,
 				0C3DE4ED1CB1D3C70091AC08 /* SessionDelegate.swift */,
 				0CA4A1311CADF2B1006A32C4 /* Script.swift */,
+				0CD8B815268FFFDE0051FE73 /* Relay.swift */,
+				0CD8B814268FFFDE0051FE73 /* PortalMembership.swift */,
 				0CA4A1331CADFAD4006A32C4 /* ScriptDelegate.swift */,
 				0C25739E1CADD7630075F77A /* ApplicationDetails.swift */,
 				0C25739A1CADCFD50075F77A /* ProcessDetails.swift */,
 				0C3DE4E91CB1B4570091AC08 /* SpawnDetails.swift */,
+				0CBD153C268FBECF00C80070 /* ChildDetails.swift */,
+				0CBD153A268FB9EF00C80070 /* CrashDetails.swift */,
+				0CD8B810268FEED40051FE73 /* Bus.swift */,
+				0CD8B812268FF2110051FE73 /* BusDelegate.swift */,
+				0C2573941CADA58B0075F77A /* Error.swift */,
 				0C2573961CADB7C60075F77A /* Runtime.swift */,
 				0C2573981CADBF560075F77A /* Marshal.swift */,
 				0C25739C1CADD4480075F77A /* AsyncOperation.swift */,
-				0C4D03C81DA2A00B00A863C7 /* Bytes.swift */,
+				0CD8B80E268FD9160051FE73 /* IOStream.swift */,
 				0CA4A1351CADFEE4006A32C4 /* SignalConnection.swift */,
 				FA517E9322C41250009A9A0E /* RpcRequest.swift */,
 				FA517E9522C4129A009A9A0E /* RpcFunction.swift */,
@@ -337,8 +355,11 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0CD8B811268FEED40051FE73 /* Bus.swift in Sources */,
 				0C2573991CADBF560075F77A /* Marshal.swift in Sources */,
+				0CD8B813268FF2110051FE73 /* BusDelegate.swift in Sources */,
 				FA517E9622C4129A009A9A0E /* RpcFunction.swift in Sources */,
+				0CBD153D268FBECF00C80070 /* ChildDetails.swift in Sources */,
 				0CA4A1341CADFAD4006A32C4 /* ScriptDelegate.swift in Sources */,
 				0C3DE4E81CB1A9530091AC08 /* DeviceManagerDelegate.swift in Sources */,
 				0C2573971CADB7C60075F77A /* Runtime.swift in Sources */,
@@ -346,9 +367,9 @@
 				FA517E9422C41250009A9A0E /* RpcRequest.swift in Sources */,
 				0C2573951CADA58B0075F77A /* Error.swift in Sources */,
 				0C2573931CAD990A0075F77A /* Device.swift in Sources */,
-				0C4D03C91DA2A00B00A863C7 /* Bytes.swift in Sources */,
 				0C25739F1CADD7630075F77A /* ApplicationDetails.swift in Sources */,
 				0C25739B1CADCFD50075F77A /* ProcessDetails.swift in Sources */,
+				0CBD153B268FB9EF00C80070 /* CrashDetails.swift in Sources */,
 				0C25739D1CADD4480075F77A /* AsyncOperation.swift in Sources */,
 				0C3DE4EC1CB1C3F60091AC08 /* DeviceDelegate.swift in Sources */,
 				0C3DE4EA1CB1B4570091AC08 /* SpawnDetails.swift in Sources */,
@@ -356,6 +377,9 @@
 				0CA4A1301CADF094006A32C4 /* Session.swift in Sources */,
 				0CA4A1361CADFEE4006A32C4 /* SignalConnection.swift in Sources */,
 				0C3DE4EE1CB1D3C70091AC08 /* SessionDelegate.swift in Sources */,
+				0CD8B80F268FD9160051FE73 /* IOStream.swift in Sources */,
+				0CD8B816268FFFDE0051FE73 /* PortalMembership.swift in Sources */,
+				0CD8B817268FFFDE0051FE73 /* Relay.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -442,7 +466,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = macosx;
@@ -496,7 +520,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				SDKROOT = macosx;
 				SWIFT_OPTIMIZATION_LEVEL = "-Owholemodule";
@@ -524,8 +548,9 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"CFrida",
+					CFrida,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-lbsm",
@@ -535,7 +560,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "CFrida";
+				SWIFT_INCLUDE_PATHS = CFrida;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
@@ -562,8 +587,9 @@
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/../Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"CFrida",
+					CFrida,
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				OTHER_CFLAGS = "";
 				OTHER_LDFLAGS = (
 					"-lbsm",
@@ -573,7 +599,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = re.frida.Frida;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
-				SWIFT_INCLUDE_PATHS = "CFrida";
+				SWIFT_INCLUDE_PATHS = CFrida;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
 				SWIFT_SWIFT3_OBJC_INFERENCE = Default;
 				SWIFT_VERSION = 5.0;
@@ -615,7 +641,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
-				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -633,7 +659,7 @@
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Automatic;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
-				MACOSX_DEPLOYMENT_TARGET = 10.14;
+				MACOSX_DEPLOYMENT_TARGET = 10.13;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

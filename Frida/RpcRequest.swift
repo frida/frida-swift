@@ -2,7 +2,7 @@ import Foundation
 
 public class RpcRequest {
     private var result: RpcInternalResult?
-    private var promises = [(RpcInternalResult) -> Void]()
+    private var promises: [(RpcInternalResult) -> Void] = []
 
     internal func received(result: RpcInternalResult) {
         self.result = result

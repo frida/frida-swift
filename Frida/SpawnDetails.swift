@@ -17,12 +17,15 @@ public class SpawnDetails: NSObject, NSCopying {
         g_object_unref(gpointer(handle))
     }
 
-    public var pid: UInt32 {
-        return frida_spawn_get_pid(handle)
+    public var pid: UInt {
+        return UInt(frida_spawn_get_pid(handle))
     }
 
     public var identifier: String? {
-        return String(cString: frida_spawn_get_identifier(handle))
+        if let rawIdentifier = frida_spawn_get_identifier(handle) {
+            return String(cString: rawIdentifier)
+        }
+        return nil
     }
 
     public override var description: String {

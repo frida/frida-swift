@@ -25,16 +25,25 @@ public class ProcessDetails: NSObject, NSCopying {
         return String(cString: frida_process_get_name(handle))
     }
 
-    public var smallIcon: NSImage? {
-        return Marshal.imageFromIcon(frida_process_get_small_icon(handle))
-    }
+    public lazy var parameters: [String: Any] = {
+        var result = Marshal.dictionaryFromParametersDict(frida_process_get_parameters(handle))
 
-    public var largeIcon: NSImage? {
-        return Marshal.imageFromIcon(frida_process_get_large_icon(handle))
-    }
+        if let started = result["started"] as? String {
+            result["started"] = Marshal.dateFromISO8601(started) ?? NSNull()
+        }
+
+        return result
+    }()
+
+    public lazy var icons: [NSImage] = {
+        guard let icons = parameters["icons"] as? [[String: Any]] else {
+            return []
+        }
+        return icons.compactMap(Marshal.iconFromVarDict)
+    }()
 
     public override var description: String {
-        return "Frida.ProcessDetails(pid: \(pid), name: \"\(name)\")"
+        return "Frida.ProcessDetails(pid: \(pid), name: \"\(name)\", parameters: \(parameters))"
     }
 
     public override func isEqual(_ object: Any?) -> Bool {

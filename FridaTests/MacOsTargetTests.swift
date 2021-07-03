@@ -161,7 +161,7 @@ class MacOsTargetTests: XCTestCase {
 
         let attachExpectation = expectation(description: "Attached to binary.")
         var sessionMaybe: Session?
-        localDevice.attach(pid) { (result) in
+        localDevice.attach(to: pid) { (result) in
             sessionMaybe = try? result()
             attachExpectation.fulfill()
         }

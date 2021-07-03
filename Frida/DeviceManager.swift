@@ -15,9 +15,9 @@ public class DeviceManager: NSObject, NSCopying {
     public typealias RemoveRemoteDeviceComplete = (_ result: RemoveRemoteDeviceResult) -> Void
     public typealias RemoveRemoteDeviceResult = () throws -> Bool
 
-    private typealias ChangedHandler = @convention(c) (_ manager: OpaquePointer, _ userData: gpointer) -> Void
     private typealias AddedHandler = @convention(c) (_ manager: OpaquePointer, _ device: OpaquePointer, _ userData: gpointer) -> Void
     private typealias RemovedHandler = @convention(c) (_ manager: OpaquePointer, _ device: OpaquePointer, _ userData: gpointer) -> Void
+    private typealias ChangedHandler = @convention(c) (_ manager: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
     private var onChangedHandler: gulong = 0
@@ -36,13 +36,13 @@ public class DeviceManager: NSObject, NSCopying {
         super.init()
 
         let rawHandle = gpointer(handle)
-        onChangedHandler = g_signal_connect_data(rawHandle, "changed", unsafeBitCast(onChanged, to: GCallback.self),
-                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                 releaseConnection, GConnectFlags(0))
         onAddedHandler = g_signal_connect_data(rawHandle, "added", unsafeBitCast(onAdded, to: GCallback.self),
                                                gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                releaseConnection, GConnectFlags(0))
         onRemovedHandler = g_signal_connect_data(rawHandle, "removed", unsafeBitCast(onRemoved, to: GCallback.self),
+                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                                                 releaseConnection, GConnectFlags(0))
+        onChangedHandler = g_signal_connect_data(rawHandle, "changed", unsafeBitCast(onChanged, to: GCallback.self),
                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
                                                  releaseConnection, GConnectFlags(0))
     }
@@ -54,7 +54,7 @@ public class DeviceManager: NSObject, NSCopying {
 
     deinit {
         let rawHandle = gpointer(handle)
-        let handlers = [onChangedHandler, onAddedHandler, onRemovedHandler]
+        let handlers = [onAddedHandler, onRemovedHandler, onChangedHandler]
         Runtime.scheduleOnFridaThread {
             for handler in handlers {
                 g_signal_handler_disconnect(rawHandle, handler)
@@ -108,10 +108,10 @@ public class DeviceManager: NSObject, NSCopying {
                     return
                 }
 
-                var devices = [Device]()
-                let numberOfDevices = frida_device_list_size(rawDevices)
-                for index in 0..<numberOfDevices {
-                    let device = Device(handle: frida_device_list_get(rawDevices, index))
+                var devices: [Device] = []
+                let n = frida_device_list_size(rawDevices)
+                for i in 0..<n {
+                    let device = Device(handle: frida_device_list_get(rawDevices, i))
                     devices.append(device)
                 }
                 g_object_unref(gpointer(rawDevices))
@@ -123,9 +123,35 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
-    public func addRemoteDevice(_ address: String, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
+    public func addRemoteDevice(address: String, certificate: String? = nil, token: String? = nil, keepaliveInterval: Int? = nil, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
-            frida_device_manager_add_remote_device(self.handle, address, nil, nil, { source, result, data in
+            let options = frida_remote_device_options_new()
+            defer {
+                g_object_unref(gpointer(options))
+            }
+
+            if let certificate = certificate {
+                do {
+                    let rawCertificate = try Marshal.certificateFromString(certificate)
+                    frida_remote_device_options_set_certificate(options, rawCertificate)
+                    g_object_unref(rawCertificate)
+                } catch let error {
+                    Runtime.scheduleOnMainThread {
+                        completionHandler { throw error }
+                    }
+                    return
+                }
+            }
+
+            if let token = token {
+                frida_remote_device_options_set_token(options, token)
+            }
+
+            if let keepaliveInterval = keepaliveInterval {
+                frida_remote_device_options_set_keepalive_interval(options, gint(keepaliveInterval))
+            }
+
+            frida_device_manager_add_remote_device(self.handle, address, options, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -147,7 +173,7 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
-    public func removeRemoteDevice(_ address: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
+    public func removeRemoteDevice(address: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             frida_device_manager_remove_remote_device(self.handle, address, nil, { source, result, data in
                 let operation = Unmanaged<AsyncOperation<RemoveRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
@@ -166,16 +192,6 @@ public class DeviceManager: NSObject, NSCopying {
                     operation.completionHandler { true }
                 }
             }, Unmanaged.passRetained(AsyncOperation<RemoveRemoteDeviceComplete>(completionHandler)).toOpaque())
-        }
-    }
-
-    private let onChanged: ChangedHandler = { _, userData in
-        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
-
-        if let manager = connection.instance {
-            Runtime.scheduleOnMainThread {
-                manager.delegate?.deviceManagerDidChangeDevices?(manager)
-            }
         }
     }
 
@@ -201,6 +217,16 @@ public class DeviceManager: NSObject, NSCopying {
         if let manager = connection.instance {
             Runtime.scheduleOnMainThread {
                 manager.delegate?.deviceManager?(manager, didRemoveDevice: device)
+            }
+        }
+    }
+
+    private let onChanged: ChangedHandler = { _, userData in
+        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
+
+        if let manager = connection.instance {
+            Runtime.scheduleOnMainThread {
+                manager.delegate?.deviceManagerDidChangeDevices?(manager)
             }
         }
     }
