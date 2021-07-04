@@ -19,9 +19,9 @@ public class PortalMembership: NSObject, NSCopying {
     }
 
     deinit {
-        let handle = gpointer(handle)
+        let h = gpointer(handle)
         Runtime.scheduleOnFridaThread {
-            g_object_unref(handle)
+            g_object_unref(h)
         }
     }
 

@@ -157,9 +157,9 @@ public class Device: NSObject, NSCopying {
     }
 
     public lazy var bus: Bus = {
-        let handle = frida_device_get_bus(handle)!
-        g_object_ref(gpointer(handle))
-        return Bus(handle: handle)
+        let busHandle = frida_device_get_bus(handle)!
+        g_object_ref(gpointer(busHandle))
+        return Bus(handle: busHandle)
     }()
 
     public var isLost: Bool {
