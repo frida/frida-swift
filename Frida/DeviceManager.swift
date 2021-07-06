@@ -123,7 +123,8 @@ public class DeviceManager: NSObject, NSCopying {
         }
     }
 
-    public func addRemoteDevice(address: String, certificate: String? = nil, token: String? = nil, keepaliveInterval: Int? = nil, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
+    public func addRemoteDevice(address: String, certificate: String? = nil, origin: String? = nil, token: String? = nil,
+                                keepaliveInterval: Int? = nil, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
         Runtime.scheduleOnFridaThread {
             let options = frida_remote_device_options_new()
             defer {
@@ -141,6 +142,10 @@ public class DeviceManager: NSObject, NSCopying {
                     }
                     return
                 }
+            }
+
+            if let origin = origin {
+                frida_remote_device_options_set_origin(options, origin)
             }
 
             if let token = token {
