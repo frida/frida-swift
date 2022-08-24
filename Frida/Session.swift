@@ -21,9 +21,6 @@ public class Session: NSObject, NSCopying {
     public typealias CompileScriptComplete = (_ result: CompileScriptResult) -> Void
     public typealias CompileScriptResult = () throws -> Data
 
-    public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
-    public typealias DisableDebuggerResult = () throws -> Bool
-
     public typealias SetupPeerConnectionComplete = (_ result: SetupPeerConnectionResult) -> Void
     public typealias SetupPeerConnectionResult = () throws -> Bool
 

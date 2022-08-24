@@ -16,6 +16,9 @@ public class Script: NSObject, NSCopying {
     public typealias EnableDebuggerComplete = (_ result: EnableDebuggerResult) -> Void
     public typealias EnableDebuggerResult = () throws -> Bool
 
+    public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
+    public typealias DisableDebuggerResult = () throws -> Bool
+
     private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
     private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ json: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
