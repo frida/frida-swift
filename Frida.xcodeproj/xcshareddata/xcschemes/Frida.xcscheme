@@ -14,9 +14,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "FA517E9A22C41380009A9A0E"
-               BuildableName = "TestTarget"
-               BlueprintName = "TestTarget"
+               BlueprintIdentifier = "0C9289331CA6F06C00FBA302"
+               BuildableName = "Frida.framework"
+               BlueprintName = "Frida"
                ReferencedContainer = "container:Frida.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -28,20 +28,10 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
-         <TestableReference
-            skipped = "NO">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "0C92893D1CA6F06C00FBA302"
-               BuildableName = "FridaTests.xctest"
-               BlueprintName = "FridaTests"
-               ReferencedContainer = "container:Frida.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
       </Testables>
    </TestAction>
    <LaunchAction
-      buildConfiguration = "Debug"
+      buildConfiguration = "Release"
       selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       launchStyle = "0"
@@ -50,16 +40,6 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
-         <BuildableReference
-            BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FA517E9A22C41380009A9A0E"
-            BuildableName = "TestTarget"
-            BlueprintName = "TestTarget"
-            ReferencedContainer = "container:Frida.xcodeproj">
-         </BuildableReference>
-      </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -67,16 +47,15 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "FA517E9A22C41380009A9A0E"
-            BuildableName = "TestTarget"
-            BlueprintName = "TestTarget"
+            BlueprintIdentifier = "0C9289331CA6F06C00FBA302"
+            BuildableName = "Frida.framework"
+            BlueprintName = "Frida"
             ReferencedContainer = "container:Frida.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">
