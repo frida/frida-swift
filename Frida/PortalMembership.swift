@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaPortalMembership)
 public class PortalMembership: NSObject, NSCopying {

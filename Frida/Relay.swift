@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaRelay)
 public class Relay: NSObject {

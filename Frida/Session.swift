@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaSession)
 public class Session: NSObject, NSCopying {

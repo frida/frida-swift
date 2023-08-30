@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaDeviceManager)
 public class DeviceManager: NSObject, NSCopying {

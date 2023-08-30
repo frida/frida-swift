@@ -1,3 +1,4 @@
+import AppKit
 import CFrida
 
 @objc(FridaProcessDetails)
@@ -17,11 +18,11 @@ public class ProcessDetails: NSObject, NSCopying {
         g_object_unref(gpointer(handle))
     }
 
-    public var pid: UInt {
+    @objc public var pid: UInt {
         return UInt(frida_process_get_pid(handle))
     }
 
-    public var name: String {
+    @objc public var name: String {
         return String(cString: frida_process_get_name(handle))
     }
 
@@ -35,7 +36,7 @@ public class ProcessDetails: NSObject, NSCopying {
         return result
     }()
 
-    public lazy var icons: [NSImage] = {
+    @objc public lazy var icons: [NSImage] = {
         guard let icons = parameters["icons"] as? [[String: Any]] else {
             return []
         }

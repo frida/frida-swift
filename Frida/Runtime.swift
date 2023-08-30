@@ -1,4 +1,5 @@
 import CFrida
+import Dispatch
 
 class Runtime {
     typealias Handler = @convention(block) () -> Void

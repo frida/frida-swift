@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaScript)
 public class Script: NSObject, NSCopying {

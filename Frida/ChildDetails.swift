@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaChildDetails)
 public class ChildDetails: NSObject, NSCopying {

@@ -1,3 +1,5 @@
+import Foundation
+
 @objc(FridaScriptDelegate)
 public protocol ScriptDelegate {
     @objc optional func scriptDestroyed(_ script: Script)

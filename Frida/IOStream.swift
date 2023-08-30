@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaIOStream)
 public class IOStream: NSObject, NSCopying {

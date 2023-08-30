@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaSpawnDetails)
 public class SpawnDetails: NSObject, NSCopying {

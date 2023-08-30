@@ -1,3 +1,4 @@
+import AppKit
 import CFrida
 
 @objc(FridaDevice)
@@ -127,15 +128,15 @@ public class Device: NSObject, NSCopying {
         }
     }
 
-    public var id: String {
+    @objc public var id: String {
         return String(cString: frida_device_get_id(handle))
     }
 
-    public var name: String {
+    @objc public var name: String {
         return String(cString: frida_device_get_name(handle))
     }
 
-    public lazy var icon: NSImage? = {
+    @objc public lazy var icon: NSImage? = {
         guard let iconVariant = frida_device_get_icon(handle) else {
             return nil
         }

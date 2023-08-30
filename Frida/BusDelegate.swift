@@ -1,3 +1,5 @@
+import Foundation
+
 @objc(FridaBusDelegate)
 public protocol BusDelegate {
     @objc optional func busDetached(_ bus: Bus)

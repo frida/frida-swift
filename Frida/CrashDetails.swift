@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaCrashDetails)
 public class CrashDetails: NSObject, NSCopying {

@@ -1,4 +1,5 @@
 import CFrida
+import Foundation
 
 @objc(FridaBus)
 public class Bus: NSObject, NSCopying {

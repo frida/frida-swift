@@ -1,3 +1,4 @@
+import AppKit
 import CFrida
 
 @objc(FridaApplicationDetails)
@@ -17,11 +18,11 @@ public class ApplicationDetails: NSObject, NSCopying {
         g_object_unref(gpointer(handle))
     }
 
-    public var identifier: String {
+    @objc public var identifier: String {
         return String(cString: frida_application_get_identifier(handle))
     }
 
-    public var name: String {
+    @objc public var name: String {
         return String(cString: frida_application_get_name(handle))
     }
 
@@ -40,7 +41,7 @@ public class ApplicationDetails: NSObject, NSCopying {
         return result
     }()
 
-    public lazy var icons: [NSImage] = {
+    @objc public lazy var icons: [NSImage] = {
         guard let icons = parameters["icons"] as? [[String: Any]] else {
             return []
         }

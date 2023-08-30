@@ -1,3 +1,4 @@
+import AppKit
 import CFrida
 
 class Marshal {
