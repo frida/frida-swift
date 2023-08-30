@@ -269,7 +269,7 @@ public class Script: NSObject, NSCopying {
             self.script = script
         }
 
-        subscript(dynamicMember functionName: String) -> RpcFunction {
+        public subscript(dynamicMember functionName: String) -> RpcFunction {
             get {
                 return RpcFunction(script: self.script, functionName: functionName)
             }
