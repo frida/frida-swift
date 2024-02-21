@@ -10,7 +10,7 @@ public struct RpcFunction {
         self.functionName = functionName
     }
 
-    func dynamicallyCall(withArguments args: [Any]) -> RpcRequest {
+    public func dynamicallyCall(withArguments args: [Any]) -> RpcRequest {
         return script.rpcPost(functionName: functionName,
                               requestId: script.nextRequestId, values: args)
     }
