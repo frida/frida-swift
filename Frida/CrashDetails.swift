@@ -1,5 +1,5 @@
-import CFrida
 import Foundation
+import Frida_Private
 
 @objc(FridaCrashDetails)
 public class CrashDetails: NSObject, NSCopying {

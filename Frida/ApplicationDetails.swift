@@ -1,5 +1,5 @@
 import AppKit
-import CFrida
+import Frida_Private
 
 @objc(FridaApplicationDetails)
 public class ApplicationDetails: NSObject, NSCopying {

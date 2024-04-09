@@ -1,5 +1,5 @@
-import CFrida
 import Foundation
+import Frida_Private
 
 @objc(FridaIOStream)
 public class IOStream: NSObject, NSCopying {

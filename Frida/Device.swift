@@ -1,5 +1,5 @@
 import AppKit
-import CFrida
+import Frida_Private
 
 @objc(FridaDevice)
 public class Device: NSObject, NSCopying {

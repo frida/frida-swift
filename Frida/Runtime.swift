@@ -1,5 +1,5 @@
-import CFrida
 import Dispatch
+import Frida_Private
 
 class Runtime {
     typealias Handler = @convention(block) () -> Void

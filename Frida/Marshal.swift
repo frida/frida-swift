@@ -1,5 +1,5 @@
 import AppKit
-import CFrida
+import Frida_Private
 
 class Marshal {
     private static let gvariantStringType = g_variant_type_new("s")

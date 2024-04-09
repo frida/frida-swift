@@ -1,5 +1,5 @@
-import CFrida
 import Foundation
+import Frida_Private
 
 @objc(FridaSession)
 public class Session: NSObject, NSCopying {
