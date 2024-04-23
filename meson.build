@@ -2,6 +2,7 @@ project('frida-swift', 'swift', 'c',
   version: run_command(find_program('python3'), files('releng' / 'frida_version.py'),
     capture: true,
     check: true).stdout().strip(),
+  meson_version: '>=1.1.0',
 )
 
 llvm_archs = {
