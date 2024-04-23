@@ -1,5 +1,7 @@
 project('frida-swift', 'swift', 'c',
-  version: '0.0.0',
+  version: run_command(find_program('python3'), files('releng' / 'frida_version.py'),
+    capture: true,
+    check: true).stdout().strip(),
 )
 
 llvm_archs = {
@@ -20,6 +22,7 @@ host_triplet = '-'.join([host_llvm_arch, host_llvm_vendor, host_machine.subsyste
 cc = meson.get_compiler('c')
 
 frida_core_dep = dependency('frida-core-1.0', default_options: [
+  'frida_version=' + meson.project_version(),
   'compiler_backend=disabled',
 ])
 
