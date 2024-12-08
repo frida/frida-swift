@@ -1,7 +1,7 @@
 frida_private_depends = []
 if frida_core_dep.type_name() == 'internal'
   # XXX: Cannot get our custom_target() to depend on frida_core_dep itself
-  frida_private_depends += subproject('frida-core').get_variable('core_public_h')
+  frida_private_depends += subproject('frida-core').get_variable('core_api')
 endif
 
 frida_private_modulemap = custom_target('modulemap',
