@@ -10,7 +10,6 @@ sources = [
   'Device.swift',
   'DeviceDelegate.swift',
   'DeviceManager.swift',
-  'DeviceManagerDelegate.swift',
   'Error.swift',
   'IOStream.swift',
   'Marshal.swift',
