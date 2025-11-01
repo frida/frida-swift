@@ -2,7 +2,7 @@ import AppKit
 import Frida_Private
 
 @objc(FridaProcessDetails)
-public class ProcessDetails: NSObject, NSCopying {
+public class ProcessDetails: NSObject, NSCopying, Identifiable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
@@ -57,5 +57,9 @@ public class ProcessDetails: NSObject, NSCopying {
 
     public override var hash: Int {
         return handle.hashValue
+    }
+
+    public var id: UInt {
+        return pid
     }
 }
