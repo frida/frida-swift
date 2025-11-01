@@ -1,4 +1,4 @@
-class SignalConnection<T: AnyObject> {
+final class SignalConnection<T: AnyObject> {
     weak var instance: T?
 
     init(instance: T) {
