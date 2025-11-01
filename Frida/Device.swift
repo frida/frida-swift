@@ -2,7 +2,7 @@ import AppKit
 import Frida_Private
 
 @objc(FridaDevice)
-public class Device: NSObject, NSCopying {
+public class Device: NSObject, NSCopying, Identifiable {
     public weak var delegate: DeviceDelegate?
 
     public enum Kind {
