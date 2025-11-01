@@ -5,10 +5,18 @@ import Frida_Private
 public class Device: NSObject, NSCopying, Identifiable {
     public weak var delegate: DeviceDelegate?
 
-    public enum Kind {
+    public enum Kind: UInt, CustomStringConvertible {
         case local
         case remote
         case usb
+
+        public var description: String {
+            switch self {
+            case .local: return "local"
+            case .remote: return "remote"
+            case .usb: return "usb"
+            }
+        }
     }
 
     public typealias QuerySystemParametersComplete = (_ result: QuerySystemParametersResult) -> Void
