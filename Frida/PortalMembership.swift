@@ -3,9 +3,6 @@ import Frida_Private
 
 @objc(FridaPortalMembership)
 public class PortalMembership: NSObject, NSCopying {
-    public typealias TerminateComplete = (_ result: TerminateResult) -> Void
-    public typealias TerminateResult = () throws -> Bool
-
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
@@ -42,25 +39,22 @@ public class PortalMembership: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func terminate(_ completionHandler: @escaping TerminateComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_portal_membership_terminate(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<TerminateComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func terminate() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_portal_membership_terminate(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_portal_membership_terminate_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_portal_membership_terminate_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<TerminateComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 }

@@ -5,21 +5,6 @@ import Frida_Private
 public class Script: NSObject, NSCopying {
     public weak var delegate: ScriptDelegate?
 
-    public typealias LoadComplete = (_ result: LoadResult) -> Void
-    public typealias LoadResult = () throws -> Bool
-
-    public typealias UnloadComplete = (_ result: UnloadResult) -> Void
-    public typealias UnloadResult = () throws -> Bool
-
-    public typealias EternalizeComplete = (_ result: EternalizeResult) -> Void
-    public typealias EternalizeResult = () throws -> Bool
-
-    public typealias EnableDebuggerComplete = (_ result: EnableDebuggerResult) -> Void
-    public typealias EnableDebuggerResult = () throws -> Bool
-
-    public typealias DisableDebuggerComplete = (_ result: DisableDebuggerResult) -> Void
-    public typealias DisableDebuggerResult = () throws -> Bool
-
     private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
     private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ json: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
@@ -78,124 +63,107 @@ public class Script: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func load(_ completionHandler: @escaping LoadComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_script_load(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<LoadComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func load() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_load(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_load_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_script_load_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<LoadComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func unload(_ completionHandler: @escaping UnloadComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_script_unload(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<UnloadComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func unload() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_unload(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_unload_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_script_unload_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<UnloadComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func eternalize(_ completionHandler: @escaping EternalizeComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_script_eternalize(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EternalizeComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func eternalize() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_eternalize(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_eternalize_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_script_eternalize_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EternalizeComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
     public func post(_ message: Any, data: Data? = nil) {
-        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
-        let json = String(data: jsonData, encoding: String.Encoding.utf8)!
+        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: [])
+        let json = String(data: jsonData, encoding: .utf8)!
 
         let rawData = Marshal.bytesFromData(data)
-
         frida_script_post(handle, json, rawData)
-
         g_bytes_unref(rawData)
     }
 
-    public func enableDebugger(_ port: UInt16 = 0, completionHandler: @escaping EnableDebuggerComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_script_enable_debugger(self.handle, port, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func enableDebugger(_ port: UInt16 = 0) async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_enable_debugger(self.handle, port, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_enable_debugger_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_script_enable_debugger_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnableDebuggerComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func disableDebugger(_ completionHandler: @escaping DisableDebuggerComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_script_disable_debugger(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DisableDebuggerComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func disableDebugger() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_disable_debugger(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_script_disable_debugger_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_script_disable_debugger_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<DisableDebuggerComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 

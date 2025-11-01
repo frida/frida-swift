@@ -12,42 +12,54 @@ class Marshal {
 
     private static let dateFormatter = makeDateFormatter()
 
-    static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Error {
-        let code = FridaError.init(UInt32(error.pointee.code))
+    static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Swift.Error {
+        let domain = error.pointee.domain
+        let code = error.pointee.code
         let message = String(cString: error.pointee.message)
 
         g_error_free(error)
 
-        switch code {
-        case FRIDA_ERROR_SERVER_NOT_RUNNING:
-            return Error.serverNotRunning(message)
-        case FRIDA_ERROR_EXECUTABLE_NOT_FOUND:
-            return Error.executableNotFound(message)
-        case FRIDA_ERROR_EXECUTABLE_NOT_SUPPORTED:
-            return Error.executableNotSupported(message)
-        case FRIDA_ERROR_PROCESS_NOT_FOUND:
-            return Error.processNotFound(message)
-        case FRIDA_ERROR_PROCESS_NOT_RESPONDING:
-            return Error.processNotResponding(message)
-        case FRIDA_ERROR_INVALID_ARGUMENT:
-            return Error.invalidArgument(message)
-        case FRIDA_ERROR_INVALID_OPERATION:
-            return Error.invalidOperation(message)
-        case FRIDA_ERROR_PERMISSION_DENIED:
-            return Error.permissionDenied(message)
-        case FRIDA_ERROR_ADDRESS_IN_USE:
-            return Error.addressInUse(message)
-        case FRIDA_ERROR_TIMED_OUT:
-            return Error.timedOut(message)
-        case FRIDA_ERROR_NOT_SUPPORTED:
-            return Error.notSupported(message)
-        case FRIDA_ERROR_PROTOCOL:
-            return Error.protocolViolation(message)
-        case FRIDA_ERROR_TRANSPORT:
-            return Error.transport(message)
-        default:
-            fatalError("Unexpected Frida error code")
+        if domain == g_io_error_quark() &&
+           code == Int32(G_IO_ERROR_CANCELLED.rawValue) {
+            return CancellationError()
         }
+
+        if domain == frida_error_quark() {
+            let fridaCode = FridaError(UInt32(code))
+
+            switch fridaCode {
+            case FRIDA_ERROR_SERVER_NOT_RUNNING:
+                return Error.serverNotRunning(message)
+            case FRIDA_ERROR_EXECUTABLE_NOT_FOUND:
+                return Error.executableNotFound(message)
+            case FRIDA_ERROR_EXECUTABLE_NOT_SUPPORTED:
+                return Error.executableNotSupported(message)
+            case FRIDA_ERROR_PROCESS_NOT_FOUND:
+                return Error.processNotFound(message)
+            case FRIDA_ERROR_PROCESS_NOT_RESPONDING:
+                return Error.processNotResponding(message)
+            case FRIDA_ERROR_INVALID_ARGUMENT:
+                return Error.invalidArgument(message)
+            case FRIDA_ERROR_INVALID_OPERATION:
+                return Error.invalidOperation(message)
+            case FRIDA_ERROR_PERMISSION_DENIED:
+                return Error.permissionDenied(message)
+            case FRIDA_ERROR_ADDRESS_IN_USE:
+                return Error.addressInUse(message)
+            case FRIDA_ERROR_TIMED_OUT:
+                return Error.timedOut(message)
+            case FRIDA_ERROR_NOT_SUPPORTED:
+                return Error.notSupported(message)
+            case FRIDA_ERROR_PROTOCOL:
+                return Error.protocolViolation(message)
+            case FRIDA_ERROR_TRANSPORT:
+                return Error.transport(message)
+            default:
+                fatalError("Unexpected Frida error code \(code)")
+            }
+        }
+
+        fatalError("Unexpected GError domain \(domain) code \(code): \(message)")
     }
 
     static func dictionaryFromParametersDict(_ hashTable: OpaquePointer) -> [String: Any] {

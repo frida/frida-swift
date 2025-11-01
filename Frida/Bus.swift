@@ -5,9 +5,6 @@ import Frida_Private
 public class Bus: NSObject, NSCopying {
     public weak var delegate: BusDelegate?
 
-    public typealias AttachComplete = (_ result: AttachResult) -> Void
-    public typealias AttachResult = () throws -> Bool
-
     private typealias DetachHandler = @convention(c) (_ bus: OpaquePointer, _ userData: gpointer) -> Void
     private typealias MessageHandler = @convention(c) (_ bus: OpaquePointer, _ json: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
@@ -66,36 +63,31 @@ public class Bus: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func attach(_ completionHandler: @escaping AttachComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_bus_attach(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func attach() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_bus_attach(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_bus_attach_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_bus_attach_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<AttachComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
     public func post(_ message: Any, data: Data? = nil) {
-        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: JSONSerialization.WritingOptions())
-        let json = String(data: jsonData, encoding: String.Encoding.utf8)!
+        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: [])
+        let json = String(data: jsonData, encoding: .utf8)!
 
         let rawData = Marshal.bytesFromData(data)
-
         frida_bus_post(handle, json, rawData)
-
         g_bytes_unref(rawData)
     }
 

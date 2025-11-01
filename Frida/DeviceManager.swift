@@ -5,17 +5,6 @@ import Frida_Private
 public class DeviceManager: NSObject, NSCopying {
     public weak var delegate: DeviceManagerDelegate?
 
-    public typealias CloseComplete = () -> Void
-
-    public typealias EnumerateDevicesComplete = (_ result: EnumerateDevicesResult) -> Void
-    public typealias EnumerateDevicesResult = () throws -> [Device]
-
-    public typealias AddRemoteDeviceComplete = (_ result: AddRemoteDeviceResult) -> Void
-    public typealias AddRemoteDeviceResult = () throws -> Device
-
-    public typealias RemoveRemoteDeviceComplete = (_ result: RemoveRemoteDeviceResult) -> Void
-    public typealias RemoveRemoteDeviceResult = () throws -> Bool
-
     private typealias AddedHandler = @convention(c) (_ manager: OpaquePointer, _ device: OpaquePointer, _ userData: gpointer) -> Void
     private typealias RemovedHandler = @convention(c) (_ manager: OpaquePointer, _ device: OpaquePointer, _ userData: gpointer) -> Void
     private typealias ChangedHandler = @convention(c) (_ manager: OpaquePointer, _ userData: gpointer) -> Void
@@ -80,124 +69,127 @@ public class DeviceManager: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func close(_ completionHandler: @escaping CloseComplete = {}) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_manager_close(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<CloseComplete>>.fromOpaque(UnsafeRawPointer(data)!).takeRetainedValue()
+    @MainActor
+    public func close() async throws {
+        try await fridaAsync(Void.self) { op in
+            frida_device_manager_close(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
-                frida_device_manager_close_finish(OpaquePointer(source), result, nil)
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_device_manager_close_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler()
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
                 }
-            }, Unmanaged.passRetained(AsyncOperation<CloseComplete>(completionHandler)).toOpaque())
+
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func enumerateDevices(_ completionHandler: @escaping EnumerateDevicesComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_manager_enumerate_devices(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumerateDevicesComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public var devices: [Device] {
+        get async throws {
+            try await fridaAsync([Device].self) { op in
+                frida_device_manager_enumerate_devices(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                        let op = InternalOp<[Device]>.takeRetained(from: userData!)
 
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawDevices = frida_device_manager_enumerate_devices_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
-                    return
-                }
+                        var rawError: UnsafeMutablePointer<GError>? = nil
+                        let rawDevices = frida_device_manager_enumerate_devices_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
 
-                var devices: [Device] = []
-                let n = frida_device_list_size(rawDevices)
-                for i in 0..<n {
-                    let device = Device(handle: frida_device_list_get(rawDevices, i))
-                    devices.append(device)
-                }
-                g_object_unref(gpointer(rawDevices))
+                        if let rawError {
+                            op.resumeFailure(Marshal.takeNativeError(rawError))
+                            return
+                        }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { devices }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnumerateDevicesComplete>(completionHandler)).toOpaque())
+                        var resultDevices: [Device] = []
+                        let count = frida_device_list_size(rawDevices)
+                        for i in 0 ..< count {
+                            let devHandle = frida_device_list_get(rawDevices, i)!
+                            resultDevices.append(Device(handle: devHandle))
+                        }
+                        g_object_unref(gpointer(rawDevices))
+
+                        op.resumeSuccess(resultDevices)
+                    },
+                    op.userData
+                )
+            }
         }
     }
 
-    public func addRemoteDevice(address: String, certificate: String? = nil, origin: String? = nil, token: String? = nil,
-                                keepaliveInterval: Int? = nil, completionHandler: @escaping AddRemoteDeviceComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            let options = frida_remote_device_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
+    @MainActor
+    public func addRemoteDevice(
+        address: String,
+        certificate: String? = nil,
+        origin: String? = nil,
+        token: String? = nil,
+        keepaliveInterval: Int? = nil
+    ) async throws -> Device {
+        let options = frida_remote_device_options_new()
+        defer { g_object_unref(gpointer(options)) }
 
-            if let certificate = certificate {
-                do {
-                    let rawCertificate = try Marshal.certificateFromString(certificate)
-                    frida_remote_device_options_set_certificate(options, rawCertificate)
-                    g_object_unref(rawCertificate)
-                } catch let error {
-                    Runtime.scheduleOnMainThread {
-                        completionHandler { throw error }
+        if let certificate {
+            let rawCertificate = try Marshal.certificateFromString(certificate)
+            frida_remote_device_options_set_certificate(options, rawCertificate)
+            g_object_unref(rawCertificate)
+        }
+
+        if let origin {
+            frida_remote_device_options_set_origin(options, origin)
+        }
+
+        if let token {
+            frida_remote_device_options_set_token(options, token)
+        }
+
+        if let keepaliveInterval {
+            frida_remote_device_options_set_keepalive_interval(options, gint(keepaliveInterval))
+        }
+
+        g_object_ref(gpointer(options))
+
+        return try await fridaAsync(Device.self) { op in
+            frida_device_manager_add_remote_device(self.handle, address, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                    let op = InternalOp<Device>.takeRetained(from: userData!)
+
+                    var rawError: UnsafeMutablePointer<GError>? = nil
+                    let rawDeviceHandle = frida_device_manager_add_remote_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                    if let rawError {
+                        op.resumeFailure(Marshal.takeNativeError(rawError))
+                        return
                     }
-                    return
-                }
-            }
 
-            if let origin = origin {
-                frida_remote_device_options_set_origin(options, origin)
-            }
+                    let device = Device(handle: rawDeviceHandle!)
+                    op.resumeSuccess(device)
+                },
+                op.userData
+            )
 
-            if let token = token {
-                frida_remote_device_options_set_token(options, token)
-            }
-
-            if let keepaliveInterval = keepaliveInterval {
-                frida_remote_device_options_set_keepalive_interval(options, gint(keepaliveInterval))
-            }
-
-            frida_device_manager_add_remote_device(self.handle, address, options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<AddRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
-
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawDevice = frida_device_manager_add_remote_device_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
-                    return
-                }
-
-                let device = Device(handle: rawDevice!)
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { device }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<AddRemoteDeviceComplete>(completionHandler)).toOpaque())
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func removeRemoteDevice(address: String, completionHandler: @escaping RemoveRemoteDeviceComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_manager_remove_remote_device(self.handle, address, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<RemoveRemoteDeviceComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func removeRemoteDevice(address: String) async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_manager_remove_remote_device(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                    let op = InternalOp<Void>.takeRetained(from: userData!)
 
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_manager_remove_remote_device_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
+                    var rawError: UnsafeMutablePointer<GError>? = nil
+                    frida_device_manager_remove_remote_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                    if let rawError {
+                        op.resumeFailure(Marshal.takeNativeError(rawError))
+                        return
                     }
-                    return
-                }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<RemoveRemoteDeviceComplete>(completionHandler)).toOpaque())
+                    op.resumeSuccess(())
+                },
+                op.userData
+            )
         }
     }
 

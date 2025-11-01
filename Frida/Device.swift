@@ -19,54 +19,6 @@ public class Device: NSObject, NSCopying, Identifiable {
         }
     }
 
-    public typealias QuerySystemParametersComplete = (_ result: QuerySystemParametersResult) -> Void
-    public typealias QuerySystemParametersResult = () throws -> [String: Any]
-
-    public typealias GetFrontmostApplicationComplete = (_ result: GetFrontmostApplicationResult) -> Void
-    public typealias GetFrontmostApplicationResult = () throws -> ApplicationDetails?
-
-    public typealias EnumerateApplicationsComplete = (_ result: EnumerateApplicationsResult) -> Void
-    public typealias EnumerateApplicationsResult = () throws -> [ApplicationDetails]
-
-    public typealias EnumerateProcessesComplete = (_ result: EnumerateProcessesResult) -> Void
-    public typealias EnumerateProcessesResult = () throws -> [ProcessDetails]
-
-    public typealias EnableSpawnGatingComplete = (_ result: EnableSpawnGatingResult) -> Void
-    public typealias EnableSpawnGatingResult = () throws -> Bool
-
-    public typealias DisableSpawnGatingComplete = (_ result: DisableSpawnGatingResult) -> Void
-    public typealias DisableSpawnGatingResult = () throws -> Bool
-
-    public typealias EnumeratePendingSpawnComplete = (_ result: EnumeratePendingSpawnResult) -> Void
-    public typealias EnumeratePendingSpawnResult = () throws -> [SpawnDetails]
-
-    public typealias EnumeratePendingChildrenComplete = (_ result: EnumeratePendingChildrenResult) -> Void
-    public typealias EnumeratePendingChildrenResult = () throws -> [ChildDetails]
-
-    public typealias SpawnComplete = (_ result: SpawnResult) -> Void
-    public typealias SpawnResult = () throws -> UInt
-
-    public typealias InputComplete = (_ result: InputResult) -> Void
-    public typealias InputResult = () throws -> Bool
-
-    public typealias ResumeComplete = (_ result: ResumeResult) -> Void
-    public typealias ResumeResult = () throws -> Bool
-
-    public typealias KillComplete = (_ result: KillResult) -> Void
-    public typealias KillResult = () throws -> Bool
-
-    public typealias AttachComplete = (_ result: AttachResult) -> Void
-    public typealias AttachResult = () throws -> Session
-
-    public typealias InjectLibraryFileComplete = (_ result: InjectLibraryFileResult) -> Void
-    public typealias InjectLibraryFileResult = () throws -> UInt
-
-    public typealias InjectLibraryBlobComplete = (_ result: InjectLibraryBlobResult) -> Void
-    public typealias InjectLibraryBlobResult = () throws -> UInt
-
-    public typealias OpenChannelComplete = (_ result: OpenChannelResult) -> Void
-    public typealias OpenChannelResult = () throws -> IOStream
-
     private typealias SpawnAddedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
     private typealias SpawnRemovedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
     private typealias ChildAddedHandler = @convention(c) (_ device: OpaquePointer, _ child: OpaquePointer, _ userData: gpointer) -> Void
@@ -191,90 +143,76 @@ public class Device: NSObject, NSCopying, Identifiable {
         return handle.hashValue
     }
 
-    public func querySystemParameters(_ completionHandler: @escaping QuerySystemParametersComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_query_system_parameters(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<QuerySystemParametersComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func querySystemParameters() async throws -> [String: Any] {
+        return try await fridaAsync([String: Any].self) { op in
+            frida_device_query_system_parameters(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<[String: Any]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawParameters = frida_device_query_system_parameters_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawParameters = frida_device_query_system_parameters_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
                 let parameters = Marshal.dictionaryFromParametersDict(rawParameters!)
-
                 g_hash_table_unref(rawParameters!)
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { parameters }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<QuerySystemParametersComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(parameters)
+            }, op.userData)
         }
     }
 
-    public func getFrontmostApplication(scope: Scope? = nil, _ completionHandler: @escaping GetFrontmostApplicationComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func getFrontmostApplication(scope: Scope? = nil) async throws -> ApplicationDetails? {
+        return try await fridaAsync(ApplicationDetails?.self) { op in
             let options = frida_frontmost_query_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
 
-            if let scope = scope {
+            if let scope {
                 frida_frontmost_query_options_set_scope(options, FridaScope(scope.rawValue))
             }
 
-            frida_device_get_frontmost_application(self.handle, options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<GetFrontmostApplicationComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_get_frontmost_application(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<ApplicationDetails?>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawApplication = frida_device_get_frontmost_application_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawApplication = frida_device_get_frontmost_application_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                let application: ApplicationDetails? = rawApplication != nil ? ApplicationDetails(handle: rawApplication!) : nil
+                let application = rawApplication != nil ? ApplicationDetails(handle: rawApplication!) : nil
+                op.resumeSuccess(application)
+            }, op.userData)
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { application }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<GetFrontmostApplicationComplete>(completionHandler)).toOpaque())
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func enumerateApplications(identifiers: [String]? = nil, scope: Scope? = nil, _ completionHandler: @escaping EnumerateApplicationsComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func enumerateApplications(identifiers: [String]? = nil, scope: Scope? = nil) async throws -> [ApplicationDetails] {
+        return try await fridaAsync([ApplicationDetails].self) { op in
             let options = frida_application_query_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
 
             for identifier in identifiers ?? [] {
                 frida_application_query_options_select_identifier(options, identifier)
             }
 
-            if let scope = scope {
+            if let scope {
                 frida_application_query_options_set_scope(options, FridaScope(scope.rawValue))
             }
 
-            frida_device_enumerate_applications(self.handle, options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumerateApplicationsComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_enumerate_applications(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<[ApplicationDetails]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawApplications = frida_device_enumerate_applications_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawApplications = frida_device_enumerate_applications_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
@@ -286,38 +224,34 @@ public class Device: NSObject, NSCopying, Identifiable {
                 }
                 g_object_unref(gpointer(rawApplications))
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { applications }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnumerateApplicationsComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(applications)
+            }, op.userData)
+
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func enumerateProcesses(pids: [UInt]? = nil, scope: Scope? = nil, _ completionHandler: @escaping EnumerateProcessesComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func enumerateProcesses(pids: [UInt]? = nil, scope: Scope? = nil) async throws -> [ProcessDetails] {
+        return try await fridaAsync([ProcessDetails].self) { op in
             let options = frida_process_query_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
 
             for pid in pids ?? [] {
                 frida_process_query_options_select_pid(options, guint(pid))
             }
 
-            if let scope = scope {
+            if let scope {
                 frida_process_query_options_set_scope(options, FridaScope(scope.rawValue))
             }
 
-            frida_device_enumerate_processes(self.handle, options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumerateProcessesComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_enumerate_processes(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<[ProcessDetails]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawProcesses = frida_device_enumerate_processes_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawProcesses = frida_device_enumerate_processes_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
@@ -329,69 +263,62 @@ public class Device: NSObject, NSCopying, Identifiable {
                 }
                 g_object_unref(gpointer(rawProcesses))
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { processes }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnumerateProcessesComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(processes)
+            }, op.userData)
+
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func enableSpawnGating(_ completionHandler: @escaping EnableSpawnGatingComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_enable_spawn_gating(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnableSpawnGatingComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func enableSpawnGating() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_enable_spawn_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_enable_spawn_gating_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_device_enable_spawn_gating_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnableSpawnGatingComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func disableSpawnGating(_ completionHandler: @escaping DisableSpawnGatingComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_disable_spawn_gating(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<DisableSpawnGatingComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func disableSpawnGating() async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_disable_spawn_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_disable_spawn_gating_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_device_disable_spawn_gating_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<DisableSpawnGatingComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func enumeratePendingSpawn(_ completionHandler: @escaping EnumeratePendingSpawnComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_pending_spawn(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumeratePendingSpawnComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func enumeratePendingSpawn() async throws -> [SpawnDetails] {
+        return try await fridaAsync([SpawnDetails].self) { op in
+            frida_device_enumerate_pending_spawn(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<[SpawnDetails]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawSpawn = frida_device_enumerate_pending_spawn_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawSpawn = frida_device_enumerate_pending_spawn_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
@@ -403,25 +330,22 @@ public class Device: NSObject, NSCopying, Identifiable {
                 }
                 g_object_unref(gpointer(rawSpawn))
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { spawn }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnumeratePendingSpawnComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(spawn)
+            }, op.userData)
         }
     }
 
-    public func enumeratePendingChildren(_ completionHandler: @escaping EnumeratePendingChildrenComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_enumerate_pending_children(self.handle, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<EnumeratePendingChildrenComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func enumeratePendingChildren() async throws -> [ChildDetails] {
+        return try await fridaAsync([ChildDetails].self) { op in
+            frida_device_enumerate_pending_children(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<[ChildDetails]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawChildren = frida_device_enumerate_pending_children_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawChildren = frida_device_enumerate_pending_children_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
@@ -433,20 +357,16 @@ public class Device: NSObject, NSCopying, Identifiable {
                 }
                 g_object_unref(gpointer(rawChildren))
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { children }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<EnumeratePendingChildrenComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(children)
+            }, op.userData)
         }
     }
 
+    @MainActor
     public func spawn(_ program: String, argv: [String]? = nil, envp: [String: String]? = nil, env: [String: String]? = nil,
-                      cwd: String? = nil, stdio: Stdio? = nil, completionHandler: @escaping SpawnComplete) {
-        Runtime.scheduleOnFridaThread {
+                      cwd: String? = nil, stdio: Stdio? = nil) async throws -> UInt {
+        return try await fridaAsync(UInt.self) { op in
             let options = frida_spawn_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
 
             let (rawArgv, argvLength) = Marshal.strvFromArray(argv)
             if let rawArgv = rawArgv {
@@ -466,210 +386,184 @@ public class Device: NSObject, NSCopying, Identifiable {
                 g_strfreev(rawEnv)
             }
 
-            if let cwd = cwd {
+            if let cwd {
                 frida_spawn_options_set_cwd(options, cwd)
             }
 
-            if let stdio = stdio {
+            if let stdio {
                 frida_spawn_options_set_stdio(options, FridaStdio(stdio.rawValue))
             }
 
-            frida_device_spawn(self.handle, program, options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<SpawnComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_spawn(self.handle, program, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<UInt>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let pid = frida_device_spawn_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let pid = frida_device_spawn_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { UInt(pid) }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<SpawnComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(UInt(pid))
+            }, op.userData)
+
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func input(_ pid: UInt, data: Data, completionHandler: @escaping InputComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func input(_ pid: UInt, data: Data) async throws {
+        return try await fridaAsync(Void.self) { op in
             let rawData = Marshal.bytesFromData(data)
-            frida_device_input(self.handle, guint(pid), rawData, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<InputComplete>>.fromOpaque(data!).takeRetainedValue()
+
+            frida_device_input(self.handle, guint(pid), rawData, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_input_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_device_input_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<InputComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
+
             g_bytes_unref(rawData)
         }
     }
 
-    public func resume(_ pid: UInt, completionHandler: @escaping ResumeComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_resume(self.handle, guint(pid), nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<ResumeComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func resume(_ pid: UInt) async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_resume(self.handle, guint(pid), op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_resume_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_device_resume_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<ResumeComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func kill(_ pid: UInt, completionHandler: @escaping KillComplete = { _ in }) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_kill(self.handle, guint(pid), nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<KillComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func kill(_ pid: UInt) async throws {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_kill(self.handle, guint(pid), op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_kill_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                frida_device_kill_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<KillComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, op.userData)
         }
     }
 
-    public func attach(to pid: UInt, realm: Realm? = nil, persistTimeout: UInt? = nil, completionHandler: @escaping AttachComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func attach(to pid: UInt, realm: Realm? = nil, persistTimeout: UInt? = nil) async throws -> Session {
+        return try await fridaAsync(Session.self) { op in
             let options = frida_session_options_new()
-            defer {
-                g_object_unref(gpointer(options))
-            }
 
-            if let realm = realm {
+            if let realm {
                 frida_session_options_set_realm(options, FridaRealm(realm.rawValue))
             }
 
-            if let persistTimeout = persistTimeout {
+            if let persistTimeout {
                 frida_session_options_set_persist_timeout(options, guint(persistTimeout))
             }
 
-            frida_device_attach(self.handle, guint(pid), options, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<AttachComplete>>.fromOpaque(data!).takeRetainedValue()
+            frida_device_attach(self.handle, guint(pid), options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Session>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawSession = frida_device_attach_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawSession = frida_device_attach_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
                 let session = Session(handle: rawSession!)
+                op.resumeSuccess(session)
+            }, op.userData)
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { session }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<AttachComplete>(completionHandler)).toOpaque())
+            g_object_unref(gpointer(options))
         }
     }
 
-    public func injectLibraryFileFile(into pid: UInt, path: String, entrypoint: String, data: String, completionHandler: @escaping InjectLibraryFileComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_inject_library_file(self.handle, guint(pid), path, entrypoint, data, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<InjectLibraryFileComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func injectLibraryFile(into pid: UInt, path: String, entrypoint: String, data: String) async throws -> UInt {
+        return try await fridaAsync(UInt.self) { op in
+            frida_device_inject_library_file(self.handle, guint(pid), path, entrypoint, data, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<UInt>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawId = frida_device_inject_library_file_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawId = frida_device_inject_library_file_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                let id = UInt(rawId)
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { id }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<InjectLibraryFileComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(UInt(rawId))
+            }, op.userData)
         }
     }
 
-    public func injectLibraryBlobBlob(into pid: UInt, blob: Data, entrypoint: String, data: String, completionHandler: @escaping InjectLibraryBlobComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func injectLibraryBlob(into pid: UInt, blob: Data, entrypoint: String, data: String) async throws -> UInt {
+        return try await fridaAsync(UInt.self) { op in
             let rawBlob = Marshal.bytesFromData(blob)
-            frida_device_inject_library_blob(self.handle, guint(pid), rawBlob, entrypoint, data, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<InjectLibraryBlobComplete>>.fromOpaque(data!).takeRetainedValue()
+
+            frida_device_inject_library_blob(self.handle, guint(pid), rawBlob, entrypoint, data, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<UInt>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawId = frida_device_inject_library_blob_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawId = frida_device_inject_library_blob_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                let id = UInt(rawId)
+                op.resumeSuccess(UInt(rawId))
+            }, op.userData)
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { id }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<InjectLibraryBlobComplete>(completionHandler)).toOpaque())
             g_bytes_unref(rawBlob)
         }
     }
 
-    public func openChannel(_ address: String, completionHandler: @escaping OpenChannelComplete) {
-        Runtime.scheduleOnFridaThread {
-            frida_device_open_channel(self.handle, address, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<OpenChannelComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func openChannel(_ address: String) async throws -> IOStream {
+        return try await fridaAsync(IOStream.self) { op in
+            frida_device_open_channel(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<IOStream>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let rawStream = frida_device_open_channel_finish(OpaquePointer(source), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let rawStream = frida_device_open_channel_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
                 let stream = IOStream(handle: rawStream!)
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { stream }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<OpenChannelComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(stream)
+            }, op.userData)
         }
     }
 

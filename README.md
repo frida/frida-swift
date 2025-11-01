@@ -15,18 +15,12 @@ Swift bindings for [Frida](https://frida.re).
 ## Example
 
 ```swift
-func testFullCycle() {
+func testFullCycle() async throws {
     let pid: UInt = 20854
 
-    let expectation = self.expectation(description: "Got message from script")
-
-    class TestDelegate : ScriptDelegate {
-        let expectation: XCTestExpectation
+    class TestDelegate: ScriptDelegate {
         var messages: [Any] = []
-
-        init(expectation: XCTestExpectation) {
-            self.expectation = expectation
-        }
+        var continuation: CheckedContinuation<Void, Never>?
 
         func scriptDestroyed(_: Script) {
             print("destroyed")
@@ -36,32 +30,32 @@ func testFullCycle() {
             print("didReceiveMessage")
             messages.append(message)
             if messages.count == 2 {
-                expectation.fulfill()
+                continuation?.resume()
+                continuation = nil
             }
         }
     }
-    let delegate = TestDelegate(expectation: expectation)
 
+    let delegate = TestDelegate()
     let manager = DeviceManager()
-    var script: Script? = nil
-    manager.enumerateDevices { result in
-        let devices = try! result()
-        let localDevice = devices.filter { $0.kind == Device.Kind.local }.first!
-        localDevice.attach(to: pid) { result in
-            let session = try! result()
-            session.createScript("console.log(\"hello\"); send(1337);") { result in
-                let s = try! result()
-                s.delegate = delegate
-                s.load() { result in
-                    _ = try! result()
-                    print("Script loaded")
-                }
-                script = s
-            }
-        }
+
+    let devices = try await manager.devices
+    let localDevice = devices.first { $0.kind == .local }!
+
+    let session = try await localDevice.attach(to: pid)
+
+    let script = try await session.createScript("""
+        console.log("hello");
+        send(1337);
+        """)
+    script.delegate = delegate
+    try await script.load()
+    print("Script loaded")
+
+    await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+        delegate.continuation = continuation
     }
 
-    self.waitForExpectations(timeout: 5.0, handler: nil)
     print("Done with script \(script), messages: \(delegate.messages)")
 }
 ```

@@ -3,21 +3,6 @@ import Frida_Private
 
 @objc(FridaIOStream)
 public class IOStream: NSObject, NSCopying {
-    public typealias CloseComplete = (_ result: CloseResult) -> Void
-    public typealias CloseResult = () throws -> Bool
-
-    public typealias ReadComplete = (_ result: ReadResult) -> Void
-    public typealias ReadResult = () throws -> Data
-
-    public typealias ReadAllComplete = (_ result: ReadAllResult) -> Void
-    public typealias ReadAllResult = () throws -> Data
-
-    public typealias WriteComplete = (_ result: WriteResult) -> Void
-    public typealias WriteResult = () throws -> UInt
-
-    public typealias WriteAllComplete = (_ result: WriteAllResult) -> Void
-    public typealias WriteAllResult = () throws -> Bool
-
     private let handle: UnsafeMutablePointer<GIOStream>
     private let input: UnsafeMutablePointer<GInputStream>
     private let output: UnsafeMutablePointer<GOutputStream>
@@ -61,137 +46,127 @@ public class IOStream: NSObject, NSCopying {
         return handle.hashValue
     }
 
-    public func close(_ count: UInt, completionHandler: @escaping CloseComplete) {
-        Runtime.scheduleOnFridaThread {
-            g_io_stream_close_async(self.handle, self.ioPriority, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<CloseComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func close(_ count: UInt) async throws {
+        try await fridaAsync(Void.self) { op in
+            let userData = op.userData
+
+            g_io_stream_close_async(self.handle, self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                let op = InternalOp<Void>.takeRetained(from: userDataPtr!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                g_io_stream_close_finish(UnsafeMutablePointer<GIOStream>(OpaquePointer(source)), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                g_io_stream_close_finish(UnsafeMutablePointer<GIOStream>(OpaquePointer(sourcePtr)), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<CloseComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(())
+            }, userData)
         }
     }
 
-    public func read(_ count: UInt, completionHandler: @escaping ReadComplete) {
-        Runtime.scheduleOnFridaThread {
-            g_input_stream_read_bytes_async(self.input, count, self.ioPriority, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<ReadComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func read(_ count: UInt) async throws -> Data {
+        try await fridaAsync(Data.self) { op in
+            let userData = op.userData
+
+            g_input_stream_read_bytes_async(self.input, count, self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                let op = InternalOp<Data>.takeRetained(from: userDataPtr!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let bytes = g_input_stream_read_bytes_finish(UnsafeMutablePointer<GInputStream>(OpaquePointer(source)), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let bytes = g_input_stream_read_bytes_finish(UnsafeMutablePointer<GInputStream>(OpaquePointer(sourcePtr)), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                let data = Marshal.dataFromBytes(bytes!)
+                op.resumeSuccess(Marshal.dataFromBytes(bytes!))
 
                 g_bytes_unref(bytes)
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { data }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<ReadComplete>(completionHandler)).toOpaque())
+            }, userData)
         }
     }
 
-    public func readAll(_ count: UInt, completionHandler: @escaping ReadAllComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func readAll(_ count: UInt) async throws -> Data {
+        try await fridaAsync(Data.self) { op in
             let buffer = g_malloc(count)!
-            g_input_stream_read_all_async(self.input, buffer, count, self.ioPriority, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<ReadAllComplete>>.fromOpaque(data!).takeRetainedValue()
+            op.payload = buffer
+            let userData = op.userData
 
-                let buffer = operation.userData!
-                defer {
-                    g_free(buffer)
-                }
+            g_input_stream_read_all_async(self.input, buffer, count, self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                let op = InternalOp<Data>.takeRetained(from: userDataPtr!)
 
-                var numBytesReadAll: gsize = 0
+                let buffer = op.payload!
+                op.payload = nil
+                defer { g_free(buffer) }
+
+                var bytesRead: gsize = 0
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                g_input_stream_read_all_finish(UnsafeMutablePointer<GInputStream>(OpaquePointer(source)), result, &numBytesReadAll, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                g_input_stream_read_all_finish(UnsafeMutablePointer<GInputStream>(OpaquePointer(sourcePtr)), asyncResultPtr, &bytesRead, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                let data = Data(bytes: buffer, count: Int(numBytesReadAll))
-
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { data }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<ReadAllComplete>(completionHandler, userData: buffer)).toOpaque())
+                op.resumeSuccess(Data(bytes: buffer, count: Int(bytesRead)))
+            }, userData)
         }
     }
 
-    public func write(_ data: Data, completionHandler: @escaping WriteComplete) {
-        Runtime.scheduleOnFridaThread {
+    @MainActor
+    public func write(_ data: Data) async throws -> UInt {
+        try await fridaAsync(UInt.self) { op in
             let bytes = Marshal.bytesFromData(data)
-            g_output_stream_write_bytes_async(self.output, bytes, self.ioPriority, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<WriteComplete>>.fromOpaque(data!).takeRetainedValue()
+            let userData = op.userData
+
+            g_output_stream_write_bytes_async(self.output, bytes, self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                let op = InternalOp<UInt>.takeRetained(from: userDataPtr!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                let numBytesWritten = g_output_stream_write_bytes_finish(UnsafeMutablePointer<GOutputStream>(OpaquePointer(source)), result, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                let numBytesWritten = g_output_stream_write_bytes_finish(UnsafeMutablePointer<GOutputStream>(OpaquePointer(sourcePtr)), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { UInt(numBytesWritten) }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<WriteComplete>(completionHandler)).toOpaque())
+                op.resumeSuccess(UInt(numBytesWritten))
+            }, userData)
+
             g_bytes_unref(bytes)
         }
     }
 
-    public func writeAll(_ data: Data, completionHandler: @escaping WriteAllComplete) {
-        Runtime.scheduleOnFridaThread {
-            let buffer = data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-                return g_memdup2(ptr.baseAddress, gsize(ptr.count))
-            }
-            g_output_stream_write_all_async(self.output, buffer, gsize(data.count), self.ioPriority, nil, { source, result, data in
-                let operation = Unmanaged<AsyncOperation<WriteAllComplete>>.fromOpaque(data!).takeRetainedValue()
+    @MainActor
+    public func writeAll(_ data: Data) async throws {
+        try await fridaAsync(Void.self) { op in
+            let buffer = data.withUnsafeBytes { ptr in g_memdup2(ptr.baseAddress, gsize(ptr.count)) }
+            op.payload = buffer
+            let userData = op.userData
 
-                let buffer = operation.userData!
-                defer {
-                    g_free(buffer)
-                }
+            g_output_stream_write_all_async(self.output, buffer, gsize(data.count), self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                let op = InternalOp<Void>.takeRetained(from: userDataPtr!)
 
-                var numBytesWritten: gsize = 0
+                let buffer = op.payload!
+                op.payload = nil
+                defer { g_free(buffer) }
+
+                var bytesWritten: gsize = 0
                 var rawError: UnsafeMutablePointer<GError>? = nil
-                g_output_stream_write_all_finish(UnsafeMutablePointer<GOutputStream>(OpaquePointer(source)), result, &numBytesWritten, &rawError)
-                if let rawError = rawError {
-                    let error = Marshal.takeNativeError(rawError)
-                    Runtime.scheduleOnMainThread {
-                        operation.completionHandler { throw error }
-                    }
+                g_output_stream_write_all_finish(UnsafeMutablePointer<GOutputStream>(OpaquePointer(sourcePtr)), asyncResultPtr, &bytesWritten, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
                     return
                 }
 
-                Runtime.scheduleOnMainThread {
-                    operation.completionHandler { true }
-                }
-            }, Unmanaged.passRetained(AsyncOperation<WriteAllComplete>(completionHandler, userData: buffer)).toOpaque())
+                op.resumeSuccess(())
+            }, userData)
         }
     }
 }
