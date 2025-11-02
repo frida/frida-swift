@@ -1,9 +1,7 @@
-import AppKit
 import Frida_Private
 
-@objc(FridaDevice)
-public class Device: NSObject, NSCopying, Identifiable {
-    public weak var delegate: DeviceDelegate?
+public final class Device: CustomStringConvertible, Equatable, Hashable, Identifiable {
+    public weak var delegate: (any DeviceDelegate)?
 
     public enum Kind: UInt, CustomStringConvertible {
         case local
@@ -30,69 +28,46 @@ public class Device: NSObject, NSCopying, Identifiable {
     private typealias LostHandler = @convention(c) (_ device: OpaquePointer, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
-    private var onSpawnAddedHandler: gulong = 0
-    private var onSpawnRemovedHandler: gulong = 0
-    private var onChildAddedHandler: gulong = 0
-    private var onChildRemovedHandler: gulong = 0
-    private var onProcessCrashedHandler: gulong = 0
-    private var onOutputHandler: gulong = 0
-    private var onUninjectedHandler: gulong = 0
-    private var onLostHandler: gulong = 0
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        super.init()
-
         let rawHandle = gpointer(handle)
-        onSpawnAddedHandler = g_signal_connect_data(rawHandle, "spawn-added", unsafeBitCast(onSpawnAdded, to: GCallback.self),
-                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                    releaseConnection, GConnectFlags(0))
-        onSpawnRemovedHandler = g_signal_connect_data(rawHandle, "spawn-removed", unsafeBitCast(onSpawnRemoved, to: GCallback.self),
-                                                      gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                      releaseConnection, GConnectFlags(0))
-        onChildAddedHandler = g_signal_connect_data(rawHandle, "child-added", unsafeBitCast(onChildAdded, to: GCallback.self),
-                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                    releaseConnection, GConnectFlags(0))
-        onChildRemovedHandler = g_signal_connect_data(rawHandle, "child-removed", unsafeBitCast(onChildRemoved, to: GCallback.self),
-                                                      gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                      releaseConnection, GConnectFlags(0))
-        onProcessCrashedHandler = g_signal_connect_data(rawHandle, "process-crashed", unsafeBitCast(onProcessCrashed, to: GCallback.self),
-                                                        gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                        releaseConnection, GConnectFlags(0))
-        onOutputHandler = g_signal_connect_data(rawHandle, "output", unsafeBitCast(onOutput, to: GCallback.self),
-                                                gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                releaseConnection, GConnectFlags(0))
-        onUninjectedHandler = g_signal_connect_data(rawHandle, "uninjected", unsafeBitCast(onUninjected, to: GCallback.self),
-                                                    gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                    releaseConnection, GConnectFlags(0))
-        onLostHandler = g_signal_connect_data(rawHandle, "lost", unsafeBitCast(onLost, to: GCallback.self),
-                                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                              releaseConnection, GConnectFlags(0))
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return Device(handle: handle)
+        g_signal_connect_data(rawHandle, "spawn-added", unsafeBitCast(onSpawnAdded, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "spawn-removed", unsafeBitCast(onSpawnRemoved, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "child-added", unsafeBitCast(onChildAdded, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "child-removed", unsafeBitCast(onChildRemoved, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "process-crashed", unsafeBitCast(onProcessCrashed, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "output", unsafeBitCast(onOutput, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "uninjected", unsafeBitCast(onUninjected, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "lost", unsafeBitCast(onLost, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
     }
 
     deinit {
-        let rawHandle = gpointer(handle)
-        let handlers = [onSpawnAddedHandler, onSpawnRemovedHandler, onChildAddedHandler, onChildRemovedHandler, onProcessCrashedHandler,
-                        onOutputHandler, onUninjectedHandler, onLostHandler]
-        Runtime.scheduleOnFridaThread {
-            for handler in handlers {
-                g_signal_handler_disconnect(rawHandle, handler)
-            }
-            g_object_unref(rawHandle)
-        }
+        g_object_unref(gpointer(handle))
     }
 
-    @objc public var id: String {
+    public var id: String {
         return String(cString: frida_device_get_id(handle))
     }
 
-    @objc public var name: String {
+    public var name: String {
         return String(cString: frida_device_get_name(handle))
     }
 
@@ -127,20 +102,16 @@ public class Device: NSObject, NSCopying, Identifiable {
         return frida_device_is_lost(handle) != 0
     }
 
-    public override var description: String {
+    public var description: String {
         return "Frida.Device(id: \"\(id)\", name: \"\(name)\", kind: \"\(kind)\")"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let device = object as? Device {
-            return device.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: Device, rhs: Device) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 
     @MainActor
@@ -413,9 +384,9 @@ public class Device: NSObject, NSCopying, Identifiable {
     }
 
     @MainActor
-    public func input(_ pid: UInt, data: Data) async throws {
+    public func input(_ pid: UInt, data: [UInt8]) async throws {
         return try await fridaAsync(Void.self) { op in
-            let rawData = Marshal.bytesFromData(data)
+            let rawData = Marshal.bytesFromArray(data)
 
             frida_device_input(self.handle, guint(pid), rawData, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<Void>.takeRetained(from: userData!)
@@ -525,9 +496,9 @@ public class Device: NSObject, NSCopying, Identifiable {
     }
 
     @MainActor
-    public func injectLibraryBlob(into pid: UInt, blob: Data, entrypoint: String, data: String) async throws -> UInt {
+    public func injectLibraryBlob(into pid: UInt, blob: [UInt8], entrypoint: String, data: String) async throws -> UInt {
         return try await fridaAsync(UInt.self) { op in
-            let rawBlob = Marshal.bytesFromData(blob)
+            let rawBlob = Marshal.bytesFromArray(blob)
 
             frida_device_inject_library_blob(self.handle, guint(pid), rawBlob, entrypoint, data, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<UInt>.takeRetained(from: userData!)
@@ -575,7 +546,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didAddSpawn: spawn)
+                device.delegate?.device(device, didAddSpawn: spawn)
             }
         }
     }
@@ -588,7 +559,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didRemoveSpawn: spawn)
+                device.delegate?.device(device, didRemoveSpawn: spawn)
             }
         }
     }
@@ -601,7 +572,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didAddChild: child)
+                device.delegate?.device(device, didAddChild: child)
             }
         }
     }
@@ -614,7 +585,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didRemoveChild: child)
+                device.delegate?.device(device, didRemoveChild: child)
             }
         }
     }
@@ -627,7 +598,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didObserveCrash: crash)
+                device.delegate?.device(device, didObserveCrash: crash)
             }
         }
     }
@@ -635,11 +606,14 @@ public class Device: NSObject, NSCopying, Identifiable {
     private let onOutput: OutputHandler = { _, pid, fd, rawData, rawDataSize, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
-        let data = Data(bytes: UnsafePointer<UInt8>(rawData), count: Int(rawDataSize))
+        var data = [UInt8](repeating: 0, count: Int(rawDataSize))
+        _ = data.withUnsafeMutableBytes { dst in
+            memcpy(dst.baseAddress, rawData, Int(rawDataSize))
+        }
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
+                device.delegate?.device(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
             }
         }
     }
@@ -649,7 +623,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.device?(device, didUninject: UInt(id))
+                device.delegate?.device(device, didUninject: UInt(id))
             }
         }
     }
@@ -659,7 +633,7 @@ public class Device: NSObject, NSCopying, Identifiable {
 
         if let device = connection.instance {
             Runtime.scheduleOnMainThread {
-                device.delegate?.deviceLost?(device)
+                device.delegate?.deviceLost(device)
             }
         }
     }
@@ -669,7 +643,6 @@ public class Device: NSObject, NSCopying, Identifiable {
     }
 }
 
-@objc(FridaScope)
 public enum Scope: UInt32, CustomStringConvertible {
     case minimal
     case metadata
@@ -684,7 +657,6 @@ public enum Scope: UInt32, CustomStringConvertible {
     }
 }
 
-@objc(FridaStdio)
 public enum Stdio: UInt32, CustomStringConvertible {
     case inherit
     case pipe
@@ -697,7 +669,6 @@ public enum Stdio: UInt32, CustomStringConvertible {
     }
 }
 
-@objc(FridaRealm)
 public enum Realm: UInt32, CustomStringConvertible {
     case native
     case emulated

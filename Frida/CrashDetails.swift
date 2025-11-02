@@ -1,17 +1,10 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaCrashDetails)
-public class CrashDetails: NSObject, NSCopying {
+public final class CrashDetails: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return CrashDetails(handle: handle)
     }
 
     deinit {
@@ -38,19 +31,15 @@ public class CrashDetails: NSObject, NSCopying {
         return Marshal.dictionaryFromParametersDict(frida_crash_get_parameters(handle))
     }()
 
-    public override var description: String {
+    public var description: String {
         return "Frida.CrashDetails(pid: \(pid), processName: \"\(processName)\", summary: \"\(summary)\")"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let details = object as? CrashDetails {
-            return details.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: CrashDetails, rhs: CrashDetails) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 }

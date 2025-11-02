@@ -1,25 +1,14 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaRelay)
-public class Relay: NSObject {
+public final class Relay: CustomStringConvertible, Equatable, Hashable {
     internal let handle: OpaquePointer
 
     init(address: String, username: String, password: String, kind: RelayKind) {
         self.handle = frida_relay_new(address, username, password, FridaRelayKind(kind.rawValue))
-
-        super.init()
     }
 
     private init(handle: OpaquePointer) {
         self.handle = handle
-
-        super.init()
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return Relay(handle: handle)
     }
 
     deinit {
@@ -42,24 +31,19 @@ public class Relay: NSObject {
         return RelayKind(rawValue: frida_relay_get_kind(handle).rawValue)!
     }
 
-    public override var description: String {
+    public var description: String {
         return "Frida.Relay(address: \"\(address)\", username: \"\(username)\", password: \"\(password)\", kind: \(kind))"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let relay = object as? Relay {
-            return relay.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: Relay, rhs: Relay) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 }
 
-@objc(FridaRelayKind)
 public enum RelayKind: UInt32, CustomStringConvertible {
     case turnUdp
     case turnTcp

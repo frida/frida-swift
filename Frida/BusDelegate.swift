@@ -1,7 +1,9 @@
-import Foundation
+public protocol BusDelegate: AnyObject {
+    func busDetached(_ bus: Bus)
+    func bus(_ bus: Bus, didReceiveMessage message: Any, withData data: [UInt8]?)
+}
 
-@objc(FridaBusDelegate)
-public protocol BusDelegate {
-    @objc optional func busDetached(_ bus: Bus)
-    @objc optional func bus(_ bus: Bus, didReceiveMessage message: Any, withData data: Data?)
+public extension BusDelegate {
+    func busDetached(_ bus: Bus) {}
+    func bus(_ bus: Bus, didReceiveMessage message: Any, withData data: [UInt8]?) {}
 }

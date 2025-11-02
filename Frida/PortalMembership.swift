@@ -1,42 +1,26 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaPortalMembership)
-public class PortalMembership: NSObject, NSCopying {
+public final class PortalMembership: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
-
-        super.init()
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return PortalMembership(handle: handle)
     }
 
     deinit {
-        let h = gpointer(handle)
-        Runtime.scheduleOnFridaThread {
-            g_object_unref(h)
-        }
+        g_object_unref(gpointer(handle))
     }
 
-    public override var description: String {
+    public var description: String {
         return "Frida.PortalMembership()"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let membership = object as? PortalMembership {
-            return membership.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: PortalMembership, rhs: PortalMembership) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 
     @MainActor

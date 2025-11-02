@@ -1,28 +1,21 @@
-import AppKit
 import Frida_Private
 
-@objc(FridaApplicationDetails)
-public class ApplicationDetails: NSObject, NSCopying {
+public final class ApplicationDetails: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return ApplicationDetails(handle: handle)
-    }
-
     deinit {
         g_object_unref(gpointer(handle))
     }
 
-    @objc public var identifier: String {
+    public var identifier: String {
         return String(cString: frida_application_get_identifier(handle))
     }
 
-    @objc public var name: String {
+    public var name: String {
         return String(cString: frida_application_get_name(handle))
     }
 
@@ -32,13 +25,7 @@ public class ApplicationDetails: NSObject, NSCopying {
     }
 
     public lazy var parameters: [String: Any] = {
-        var result = Marshal.dictionaryFromParametersDict(frida_application_get_parameters(handle))
-
-        if let started = result["started"] as? String {
-            result["started"] = Marshal.dateFromISO8601(started) ?? NSNull()
-        }
-
-        return result
+        return Marshal.dictionaryFromParametersDict(frida_application_get_parameters(handle))
     }()
 
     public lazy var icons: [Icon] = {
@@ -48,7 +35,7 @@ public class ApplicationDetails: NSObject, NSCopying {
         return iconDicts.map(Marshal.iconFromVarDict)
     }()
 
-    public override var description: String {
+    public var description: String {
         if let pid = self.pid {
             return "Frida.ApplicationDetails(identifier: \"\(identifier)\", name: \"\(name)\", pid: \(pid), parameters: \(parameters))"
         } else {
@@ -56,15 +43,11 @@ public class ApplicationDetails: NSObject, NSCopying {
         }
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let details = object as? ApplicationDetails {
-            return details.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: ApplicationDetails, rhs: ApplicationDetails) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 }

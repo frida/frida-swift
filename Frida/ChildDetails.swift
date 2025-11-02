@@ -1,17 +1,10 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaChildDetails)
-public class ChildDetails: NSObject, NSCopying {
+public final class ChildDetails: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return ChildDetails(handle: handle)
     }
 
     deinit {
@@ -58,24 +51,19 @@ public class ChildDetails: NSObject, NSCopying {
         return nil
     }
 
-    public override var description: String {
-        return "Frida.ChildDetails(pid: \(pid), parentPid: \(parentPid), origin: \(origin), identifier: \(String(describing: identifier)), path: \(String(describing: path))), argv: \(String(describing: argv))), envp: \(String(describing: envp)))"
+    public var description: String {
+        return "Frida.ChildDetails(pid: \(pid), parentPid: \(parentPid), origin: \(origin), identifier: \(String(describing: identifier)), path: \(String(describing: path)), argv: \(String(describing: argv)), envp: \(String(describing: envp)))"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let details = object as? ChildDetails {
-            return details.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: ChildDetails, rhs: ChildDetails) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 }
 
-@objc(FridaChildOrigin)
 public enum ChildOrigin: UInt32, CustomStringConvertible {
     case fork
     case exec

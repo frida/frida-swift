@@ -1,5 +1,7 @@
-import AppKit
 import Frida_Private
+#if canImport(Foundation)
+import Foundation
+#endif
 
 class Marshal {
     private static let gvariantStringType = g_variant_type_new("s")
@@ -9,8 +11,6 @@ class Marshal {
     private static let gvariantByteArrayType = g_variant_type_new("ay")
     private static let gvariantVarDictType = g_variant_type_new("a{sv}")
     private static let gvariantArrayType = g_variant_type_new("a*")
-
-    private static let dateFormatter = makeDateFormatter()
 
     static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Swift.Error {
         let domain = error.pointee.domain
@@ -98,7 +98,14 @@ class Marshal {
 
         if g_variant_is_of_type(v, gvariantByteArrayType) != 0 {
             var count: gsize = 0
-            return Data(bytes: g_variant_get_fixed_array(v, &count, 1), count: Int(count))
+            let basePtr = g_variant_get_fixed_array(v, &count, 1)
+
+            let length = Int(count)
+            var bytes = [UInt8](repeating: 0, count: length)
+            _ = bytes.withUnsafeMutableBytes { dst in
+                memcpy(dst.baseAddress, basePtr, length)
+            }
+            return bytes
         }
 
         if g_variant_is_of_type(v, gvariantVarDictType) != 0 {
@@ -137,27 +144,31 @@ class Marshal {
             return result
         }
 
-        return NSNull()
+        return MarshalNull.shared
+    }
+
+    @inlinable
+    public static func stringFromCString(_ cString: UnsafePointer<CChar>) -> String {
+        let length = Int(strlen(cString))
+        if length == 0 {
+            return ""
+        }
+
+        var buffer = [UInt8](repeating: 0, count: length)
+        _ = buffer.withUnsafeMutableBytes { dstBuf in
+            memcpy(dstBuf.baseAddress, cString, length)
+        }
+
+        return String(decoding: buffer, as: UTF8.self)
     }
 
     private static func stringFromVariant(_ v: OpaquePointer) -> String {
         return String(cString: UnsafeRawPointer(g_variant_get_string(v, nil)!).assumingMemoryBound(to: Int8.self))
     }
 
-    static func dateFromISO8601(_ text: String) -> Date? {
-        return dateFormatter.date(from: text)
-    }
-
-    private static func makeDateFormatter() -> ISO8601DateFormatter {
-        let formatter = ISO8601DateFormatter()
-        formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        return formatter
-    }
-
     static func iconFromVarDict(_ dict: [String: Any]) -> Icon {
         let formatString = dict["format"] as! String
-        let rawData = dict["image"] as! Data
-        let bytes = [UInt8](rawData)
+        let bytes = dict["image"] as! [UInt8]
 
         switch formatString {
         case "rgba":
@@ -239,36 +250,68 @@ class Marshal {
         return (envp, length)
     }
 
-    static func dataFromBytes(_ bytes: OpaquePointer) -> Data {
+    public static func bytesFromArray(_ data: [UInt8]?) -> OpaquePointer? {
+        guard let data = data else {
+            return nil
+        }
+
+        return data.withUnsafeBytes { rawBuf -> OpaquePointer? in
+            guard let base = rawBuf.baseAddress else {
+                return nil
+            }
+
+            let size = gsize(rawBuf.count)
+            let bytesHandle = g_bytes_new(base, size)
+
+            return bytesHandle
+        }
+    }
+
+    public static func arrayFromBytes(_ bytesHandle: OpaquePointer?) -> [UInt8]? {
+        guard let bytesHandle = bytesHandle else {
+            return nil
+        }
+
         var size: gsize = 0
-        if let rawBytes = g_bytes_get_data(bytes, &size), size > 0 {
-            g_bytes_ref(bytes)
-            return Data(bytesNoCopy: UnsafeMutableRawPointer(mutating: rawBytes), count: Int(size), deallocator: .custom({ (ptr, size) in
-                g_bytes_unref(bytes)
-            }))
+
+        let rawPtr = g_bytes_get_data(bytesHandle, &size)
+
+        guard let rawPtr = rawPtr else {
+            return []
         }
-        return Data()
+
+        let count = Int(size)
+        if count == 0 {
+            return []
+        }
+
+        var result = [UInt8](repeating: 0, count: count)
+
+        _ = result.withUnsafeMutableBytes { dstBuf in
+            memcpy(dstBuf.baseAddress, rawPtr, count)
+        }
+
+        return result
     }
 
-    static func dataFromBytes(_ bytes: OpaquePointer!) -> Data? {
-        if let bytes = bytes {
-            return dataFromBytes(bytes)
+    #if !canImport(Foundation)
+    #error("Frida Swift currently requires Foundation for JSON encoding/decoding. TODO: add Foundation-less fallback.")
+    #else
+
+    static func jsonFromValue(_ value: Any) -> String {
+        guard JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(withJSONObject: value, options: [])
+        else {
+            fatalError("Marshal.jsonFromValue(_:): value is not valid JSON")
         }
-        return nil
+        return String(decoding: data, as: UTF8.self)
     }
 
-    static func bytesFromData(_ data: Data) -> OpaquePointer {
-        return data.withUnsafeBytes { (ptr: UnsafeRawBufferPointer) in
-            return g_bytes_new(ptr.baseAddress, UInt(ptr.count))
-        }
+    static func valueFromJSON(_ json: String) -> Any {
+        return try! JSONSerialization.jsonObject(with: json.data(using: .utf8)!, options: [])
     }
 
-    static func bytesFromData(_ data: Data?) -> OpaquePointer! {
-        if let data = data {
-            return bytesFromData(data)
-        }
-        return nil
-    }
+    #endif
 
     static func certificateFromString(_ string: String) throws -> UnsafeMutablePointer<GTlsCertificate> {
         var result: UnsafeMutablePointer<GTlsCertificate>?
@@ -285,4 +328,12 @@ class Marshal {
         }
         return result!
     }
+}
+
+public struct MarshalNull: CustomStringConvertible, Equatable {
+    public static let shared = MarshalNull()
+
+    private init() {}
+
+    public var description: String { "null" }
 }

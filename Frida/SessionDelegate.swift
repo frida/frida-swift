@@ -1,6 +1,3 @@
-import Foundation
-
-@objc(FridaSessionDelegate)
-public protocol SessionDelegate {
+public protocol SessionDelegate: AnyObject {
     func session(_ session: Session, didDetach reason: SessionDetachReason, crash: CrashDetails?)
 }

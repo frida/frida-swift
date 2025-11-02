@@ -1,40 +1,23 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaSession)
-public class Session: NSObject, NSCopying {
-    public weak var delegate: SessionDelegate?
+public final class Session: CustomStringConvertible, Equatable, Hashable {
+    public weak var delegate: (any SessionDelegate)?
 
     private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ crash: OpaquePointer?, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
-    private var onDetachedHandler: gulong = 0
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        super.init()
-
         let rawHandle = gpointer(handle)
-        onDetachedHandler = g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, to: GCallback.self),
-                                                  gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                  releaseConnection, GConnectFlags(0))
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return Session(handle: handle)
+        g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
     }
 
     deinit {
-        let rawHandle = gpointer(handle)
-        let handlers = [onDetachedHandler]
-        Runtime.scheduleOnFridaThread {
-            for handler in handlers {
-                g_signal_handler_disconnect(rawHandle, handler)
-            }
-            g_object_unref(rawHandle)
-        }
+        g_object_unref(gpointer(handle))
     }
 
     public var pid: UInt {
@@ -49,20 +32,16 @@ public class Session: NSObject, NSCopying {
         return frida_session_is_detached(handle) != 0
     }
 
-    public override var description: String {
+    public var description: String {
         return "Frida.Session(pid: \(pid))"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let session = object as? Session {
-            return session.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: Session, rhs: Session) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 
     @MainActor
@@ -166,9 +145,9 @@ public class Session: NSObject, NSCopying {
     }
 
     @MainActor
-    public func createScript(_ bytes: Data, name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> Script {
+    public func createScript(_ bytes: [UInt8], name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> Script {
         return try await fridaAsync(Script.self) { op in
-            let rawBytes = Marshal.bytesFromData(bytes)
+            let rawBytes = Marshal.bytesFromArray(bytes)
             let options = Session.parseScriptOptions(name, runtime)
 
             frida_session_create_script_from_bytes(self.handle, rawBytes, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -192,12 +171,12 @@ public class Session: NSObject, NSCopying {
     }
 
     @MainActor
-    public func compileScript(_ source: String, name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> Data {
-        return try await fridaAsync(Data.self) { op in
+    public func compileScript(_ source: String, name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> [UInt8] {
+        return try await fridaAsync([UInt8].self) { op in
             let options = Session.parseScriptOptions(name, runtime)
 
             frida_session_compile_script(self.handle, source, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
-                let op = InternalOp<Data>.takeRetained(from: userData!)
+                let op = InternalOp<[UInt8]>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
                 let rawBytes = frida_session_compile_script_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
@@ -207,7 +186,7 @@ public class Session: NSObject, NSCopying {
                     return
                 }
 
-                op.resumeSuccess(Marshal.dataFromBytes(rawBytes!))
+                op.resumeSuccess(Marshal.arrayFromBytes(rawBytes)!)
 
                 g_bytes_unref(rawBytes)
             }, op.userData)
@@ -325,7 +304,6 @@ public class Session: NSObject, NSCopying {
     }
 }
 
-@objc(FridaSessionDetachReason)
 public enum SessionDetachReason: Int, CustomStringConvertible {
     case applicationRequested = 1
     case processReplaced
@@ -344,7 +322,6 @@ public enum SessionDetachReason: Int, CustomStringConvertible {
     }
 }
 
-@objc(FridaScriptRuntime)
 public enum ScriptRuntime: UInt32, CustomStringConvertible {
     case auto
     case qjs

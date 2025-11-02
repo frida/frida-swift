@@ -1,66 +1,44 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaScript)
-public class Script: NSObject, NSCopying {
-    public weak var delegate: ScriptDelegate?
+public final class Script: CustomStringConvertible, Equatable, Hashable {
+    public weak var delegate: (any ScriptDelegate)?
 
     private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
     private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ json: UnsafePointer<gchar>,
         _ data: OpaquePointer?, _ userData: gpointer) -> Void
 
     private let handle: OpaquePointer
-    private var onDestroyedHandler: gulong = 0
-    private var onMessageHandler: gulong = 0
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        super.init()
-
         let rawHandle = gpointer(handle)
-        onDestroyedHandler = g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, to: GCallback.self),
-                                                   gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                   releaseConnection, GConnectFlags(0))
-        onMessageHandler = g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, to: GCallback.self),
-                                                 gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                                                 releaseConnection, GConnectFlags(0))
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return Script(handle: handle)
+        g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
+        g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, to: GCallback.self),
+                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
+                              releaseConnection, GConnectFlags(0))
     }
 
     deinit {
-        let rawHandle = gpointer(handle)
-        let handlers = [onDestroyedHandler, onMessageHandler]
-        Runtime.scheduleOnFridaThread {
-            for handler in handlers {
-                g_signal_handler_disconnect(rawHandle, handler)
-            }
-            g_object_unref(rawHandle)
-        }
+        g_object_unref(gpointer(handle))
     }
 
     public lazy var exports: Exports = {
         return Exports(script: self)
     }()
 
-    public override var description: String {
+    public var description: String {
         return "Frida.Script()"
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let script = object as? Script {
-            return script.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: Script, rhs: Script) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 
     @MainActor
@@ -120,12 +98,12 @@ public class Script: NSObject, NSCopying {
         }
     }
 
-    public func post(_ message: Any, data: Data? = nil) {
-        let jsonData = try! JSONSerialization.data(withJSONObject: message, options: [])
-        let json = String(data: jsonData, encoding: .utf8)!
+    public func post(_ message: Any, data: [UInt8]? = nil) {
+        let json = Marshal.jsonFromValue(message)
+        let rawData = Marshal.bytesFromArray(data)
 
-        let rawData = Marshal.bytesFromData(data)
         frida_script_post(handle, json, rawData)
+
         g_bytes_unref(rawData)
     }
 
@@ -172,7 +150,7 @@ public class Script: NSObject, NSCopying {
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
-                script.delegate?.scriptDestroyed?(script)
+                script.delegate?.scriptDestroyed(script)
             }
         }
     }
@@ -180,46 +158,53 @@ public class Script: NSObject, NSCopying {
     private let onMessage: MessageHandler = { _, rawJson, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
-        let json = Data(bytesNoCopy: UnsafeMutableRawPointer.init(mutating: rawJson), count: Int(strlen(rawJson)), deallocator: .none)
-        let message = try! JSONSerialization.jsonObject(with: json, options: JSONSerialization.ReadingOptions())
+        let jsonString = Marshal.stringFromCString(rawJson)
+        let parsedAny = Marshal.valueFromJSON(jsonString)
+        let dataBytes = Marshal.arrayFromBytes(rawData)
 
-        let data = Marshal.dataFromBytes(rawData)
+        if
+            let script = connection.instance,
+            let msgDict = parsedAny as? [String: Any],
+            let payloadAny = msgDict["payload"],
+            let payload = payloadAny as? [Any],
+            payload.count >= 3,
+            let kind = payload[0] as? String,
+            kind == "frida:rpc",
+            let requestIdAny = payload[1] as? Int,
+            let status = payload[2] as? String
+        {
+            if let callback = script.rpcCallbacks[requestIdAny] {
+                if status == "ok" {
+                    var result: Any? = nil
+                    if let db = dataBytes {
+                        result = db
+                    } else if payload.count >= 4 {
+                        result = payload[3]
+                    }
 
-        let decoder = JSONDecoder()
-        do {
-            let rpcMessage = try decoder.decode(FridaRpcMessage.self, from: json)
-            let script = connection.instance!
-            let messageDict = message as! [String: Any]
-            let payload = messageDict[FridaRpcMessage.CodingKeys.payload.rawValue] as! [Any]
-            let callback = script.rpcCallbacks[rpcMessage.payload.requestId]!
-
-            if rpcMessage.payload.status == .ok {
-                var result: Any?
-                if let data = data {
-                    result = data
+                    callback(.success(value: result))
                 } else {
-                    result = payload[3]
+                    let errorMessage: String = (payload.count >= 4 ? (payload[3] as? String ?? "") : "")
+                    var stackTraceMaybe: String? = nil
+                    if payload.count >= 6 {
+                        stackTraceMaybe = payload[5] as? String
+                    }
+
+                    let err = Error.rpcError(message: errorMessage, stackTrace: stackTraceMaybe)
+                    callback(.error(err))
                 }
 
-                callback(.success(value: result))
-            } else {
-                let errorMessage = payload[3] as! String
-                var stackTraceMaybe: String?
-                if payload.count >= 6 {
-                    stackTraceMaybe = (payload[5] as! String)
-                }
+                script.rpcCallbacks.removeValue(forKey: requestIdAny)
 
-                let error = Error.rpcError(message: errorMessage, stackTrace: stackTraceMaybe)
-                callback(.error(error))
+                return
             }
-
-            script.rpcCallbacks.removeValue(forKey: rpcMessage.payload.requestId)
-            return
-        } catch {}
+        }
 
         if let script = connection.instance {
             Runtime.scheduleOnMainThread {
-                script.delegate?.script?(script, didReceiveMessage: message, withData: data)
+                script.delegate?.script(script,
+                                        didReceiveMessage: parsedAny,
+                                        withData: dataBytes)
             }
         }
     }
@@ -288,16 +273,6 @@ public class Script: NSObject, NSCopying {
 
         var description: String {
             return rawValue
-        }
-    }
-
-    private struct FridaRpcMessage: Decodable {
-        let type: FridaMessageType
-        let payload: FridaRpcPayload
-
-        enum CodingKeys: String, CodingKey {
-            case type
-            case payload
         }
     }
 

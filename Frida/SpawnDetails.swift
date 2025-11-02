@@ -1,17 +1,10 @@
-import Foundation
 import Frida_Private
 
-@objc(FridaSpawnDetails)
-public class SpawnDetails: NSObject, NSCopying {
+public final class SpawnDetails: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
-    }
-
-    public func copy(with zone: NSZone?) -> Any {
-        g_object_ref(gpointer(handle))
-        return SpawnDetails(handle: handle)
     }
 
     deinit {
@@ -29,7 +22,7 @@ public class SpawnDetails: NSObject, NSCopying {
         return nil
     }
 
-    public override var description: String {
+    public var description: String {
         if let identifier = self.identifier {
             return "Frida.SpawnDetails(pid: \(pid), identifier: \"\(identifier)\")"
         } else {
@@ -37,15 +30,11 @@ public class SpawnDetails: NSObject, NSCopying {
         }
     }
 
-    public override func isEqual(_ object: Any?) -> Bool {
-        if let details = object as? SpawnDetails {
-            return details.handle == handle
-        } else {
-            return false
-        }
+    public static func == (lhs: SpawnDetails, rhs: SpawnDetails) -> Bool {
+        return lhs.handle == rhs.handle
     }
 
-    public override var hash: Int {
-        return handle.hashValue
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
     }
 }

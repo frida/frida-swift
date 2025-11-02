@@ -1,7 +1,9 @@
-import Foundation
+public protocol ScriptDelegate: AnyObject {
+    func scriptDestroyed(_ script: Script)
+    func script(_ script: Script, didReceiveMessage message: Any, withData data: [UInt8]?)
+}
 
-@objc(FridaScriptDelegate)
-public protocol ScriptDelegate {
-    @objc optional func scriptDestroyed(_ script: Script)
-    @objc optional func script(_ script: Script, didReceiveMessage message: Any, withData data: Data?)
+public extension ScriptDelegate {
+    func scriptDestroyed(_ script: Script) {}
+    func script(_ script: Script, didReceiveMessage message: Any, withData data: [UInt8]?) {}
 }
