@@ -22,7 +22,6 @@ sources = [
   'ProcessDetails.swift',
   'Relay.swift',
   'RpcFunction.swift',
-  'RpcRequest.swift',
   'Runtime.swift',
   'Script.swift',
   'ScriptDelegate.swift',

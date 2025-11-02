@@ -9,6 +9,9 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
 
     private let handle: OpaquePointer
 
+    private var rpcContinuations: [Int: (RpcInternalResult) -> Void] = [:]
+    private var requestId = 0
+
     init(handle: OpaquePointer) {
         self.handle = handle
 
@@ -173,7 +176,7 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
             let requestIdAny = payload[1] as? Int,
             let status = payload[2] as? String
         {
-            if let callback = script.rpcCallbacks[requestIdAny] {
+            if let cont = script.rpcContinuations[requestIdAny] {
                 if status == "ok" {
                     var result: Any? = nil
                     if let db = dataBytes {
@@ -182,7 +185,7 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
                         result = payload[3]
                     }
 
-                    callback(.success(value: result))
+                    cont(.success(value: result))
                 } else {
                     let errorMessage: String = (payload.count >= 4 ? (payload[3] as? String ?? "") : "")
                     var stackTraceMaybe: String? = nil
@@ -190,11 +193,10 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
                         stackTraceMaybe = payload[5] as? String
                     }
 
-                    let err = Error.rpcError(message: errorMessage, stackTrace: stackTraceMaybe)
-                    callback(.error(err))
+                    let err = Error.rpcError(message: errorMessage,
+                                              stackTrace: stackTraceMaybe)
+                    cont(.error(err))
                 }
-
-                script.rpcCallbacks.removeValue(forKey: requestIdAny)
 
                 return
             }
@@ -223,6 +225,7 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
             self.script = script
         }
 
+        @MainActor
         public subscript(dynamicMember functionName: String) -> RpcFunction {
             get {
                 return RpcFunction(script: self.script, functionName: functionName)
@@ -230,34 +233,38 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    internal typealias RpcInternalResultCallback = (_ result: RpcInternalResult) -> Void
-    private var rpcCallbacks: [Int: RpcInternalResultCallback] = [:]
-    private var requestId = 0
-    var nextRequestId: Int {
-        get {
-            let currentId = requestId
-            requestId += 1
-            return currentId
-        }
-    }
+    @MainActor
+    internal func rpcCall(functionName: String, args: [Any]) async throws -> Any? {
+        let requestId = makeRequestId()
 
-    internal func rpcPost(functionName: String, requestId: Int, values: [Any]) -> RpcRequest {
         let message: [Any] = [
             String(describing: FridaRpcKind.default),
             requestId,
             String(describing: FridaRpcOperation.call),
             functionName,
-            values
+            args
         ]
 
-        let request = RpcRequest()
-        rpcCallbacks[requestId] = { result in
-            request.received(result: result)
+        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Any?, Swift.Error>) in
+            rpcContinuations[requestId] = { [weak self] result in
+                self?.rpcContinuations.removeValue(forKey: requestId)
+
+                switch result {
+                case let .success(value: value):
+                    cont.resume(returning: value)
+                case let .error(err):
+                    cont.resume(throwing: err)
+                }
+            }
+
+            self.post(message)
         }
+    }
 
-        post(message, data: nil)
-
-        return request
+    func makeRequestId() -> Int {
+        let currentId = requestId
+        requestId += 1
+        return currentId
     }
 
     // MARK: - Private Types
@@ -300,5 +307,10 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
             requestId = try container.decode(Int.self)
             status = try container.decode(FridaRpcStatus.self)
         }
+    }
+
+    internal enum RpcInternalResult {
+        case success(value: Any?)
+        case error(Swift.Error)
     }
 }
