@@ -96,11 +96,11 @@ public class Device: NSObject, NSCopying, Identifiable {
         return String(cString: frida_device_get_name(handle))
     }
 
-    @objc public lazy var icon: NSImage? = {
+    public lazy var icon: Icon? = {
         guard let iconVariant = frida_device_get_icon(handle) else {
             return nil
         }
-        let iconDict = Marshal.valueFromVariant(iconVariant) as! [String: Any];
+        let iconDict = Marshal.valueFromVariant(iconVariant) as! [String: Any]
         return Marshal.iconFromVarDict(iconDict)
     }()
 

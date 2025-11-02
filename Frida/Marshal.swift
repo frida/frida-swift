@@ -154,45 +154,30 @@ class Marshal {
         return formatter
     }
 
-    static func iconFromVarDict(_ dict: [String: Any]) -> NSImage? {
-        guard let format = dict["format"] as? String else {
-            return nil
-        }
-        guard let image = dict["image"] as? Data else {
-            return nil
-        }
+    static func iconFromVarDict(_ dict: [String: Any]) -> Icon {
+        let formatString = dict["format"] as! String
+        let rawData = dict["image"] as! Data
+        let bytes = [UInt8](rawData)
 
-        switch format {
+        switch formatString {
         case "rgba":
-            guard let width = dict["width"] as? Int64 else {
-                return nil
-            }
-            guard let height = dict["height"] as? Int64 else {
-                return nil
-            }
-            return imageFromRGBA(width: Int(width), height: Int(height), pixels: image)
+            let w = dict["width"] as! Int64
+            let h = dict["height"] as! Int64
+
+            return .rgba(
+                width: Int(w),
+                height: Int(h),
+                pixels: bytes
+            )
+
         case "png":
-            return NSImage(data: image)
+            return .png(
+                data: bytes
+            )
+
         default:
-            return nil
+            fatalError("Unexpected icon format from Frida: \(formatString)")
         }
-    }
-
-    private static func imageFromRGBA(width: Int, height: Int, pixels: Data) -> NSImage? {
-        let bitsPerComponent = 8
-        let bitsPerPixel = 4 * bitsPerComponent
-        let bytesPerRow = width * (bitsPerPixel / 8)
-        let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo: CGBitmapInfo = [.byteOrder32Big, CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)]
-
-        let provider = CGDataProvider(data: pixels as CFData)!
-
-        let shouldInterpolate = false
-        let renderingIntent = CGColorRenderingIntent.defaultIntent
-
-        let image = CGImage(width: width, height: height, bitsPerComponent: bitsPerComponent, bitsPerPixel: bitsPerPixel, bytesPerRow: bytesPerRow, space: colorSpace, bitmapInfo: bitmapInfo, provider: provider, decode: nil, shouldInterpolate: shouldInterpolate, intent: renderingIntent)!
-
-        return NSImage(cgImage: image, size: NSSize(width: width, height: height))
     }
 
     static func arrayFromStrv(_ strv: UnsafeMutablePointer<UnsafeMutablePointer<gchar>?>) -> [String] {

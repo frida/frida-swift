@@ -36,11 +36,11 @@ public class ProcessDetails: NSObject, NSCopying, Identifiable {
         return result
     }()
 
-    @objc public lazy var icons: [NSImage] = {
-        guard let icons = parameters["icons"] as? [[String: Any]] else {
+    public lazy var icons: [Icon] = {
+        guard let iconDicts = parameters["icons"] as? [[String: Any]] else {
             return []
         }
-        return icons.compactMap(Marshal.iconFromVarDict)
+        return iconDicts.map(Marshal.iconFromVarDict)
     }()
 
     public override var description: String {
