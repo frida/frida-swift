@@ -4,7 +4,12 @@ import Frida_Private
 @MainActor
 public final class DeviceManager: ObservableObject {
     @Published public private(set) var devices: [Device] = []
-    @Published public private(set) var lastError: (any Swift.Error)?
+    @Published public private(set) var discoveryState: DiscoveryState = .discovering
+
+    public enum DiscoveryState: Equatable {
+        case discovering
+        case ready
+    }
 
     private let handle: OpaquePointer
 
@@ -28,7 +33,7 @@ public final class DeviceManager: ObservableObject {
         setupSignals()
 
         Task {
-            await self.syncDevicesFromFrida()
+            await self.performInitialDiscovery()
         }
     }
 
@@ -108,7 +113,6 @@ public final class DeviceManager: ObservableObject {
             g_object_unref(gpointer(options))
         }
 
-        self.lastError = nil
         return newDevice
     }
 
@@ -132,17 +136,17 @@ public final class DeviceManager: ObservableObject {
         }
     }
 
-    private func syncDevicesFromFrida() async {
+    private func performInitialDiscovery() async {
         do {
-            let snapshot = try await enumerateDevicesFromFrida()
+            let snapshot = try await fetchInitialDevices()
             self.devices = snapshot
-            self.lastError = nil
         } catch {
-            self.lastError = error
+            self.devices = []
         }
+        self.discoveryState = .ready
     }
 
-    private func enumerateDevicesFromFrida() async throws -> [Device] {
+    private func fetchInitialDevices() async throws -> [Device] {
         try await fridaAsync([Device].self) { op in
             frida_device_manager_enumerate_devices(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                     let op = InternalOp<[Device]>.takeRetained(from: userData!)
