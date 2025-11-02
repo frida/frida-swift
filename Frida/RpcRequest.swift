@@ -1,4 +1,4 @@
-public class RpcRequest {
+public final class RpcRequest {
     private var result: RpcInternalResult?
     private var promises: [(RpcInternalResult) -> Void] = []
 
