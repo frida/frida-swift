@@ -304,6 +304,7 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
     }
 }
 
+@frozen
 public enum SessionDetachReason: Int, CustomStringConvertible {
     case applicationRequested = 1
     case processReplaced
@@ -322,6 +323,7 @@ public enum SessionDetachReason: Int, CustomStringConvertible {
     }
 }
 
+@frozen
 public enum ScriptRuntime: UInt32, CustomStringConvertible {
     case auto
     case qjs

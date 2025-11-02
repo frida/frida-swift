@@ -3,6 +3,7 @@ import Frida_Private
 public final class Device: CustomStringConvertible, Equatable, Hashable, Identifiable {
     public weak var delegate: (any DeviceDelegate)?
 
+    @frozen
     public enum Kind: UInt, CustomStringConvertible {
         case local
         case remote
@@ -643,6 +644,7 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
     }
 }
 
+@frozen
 public enum Scope: UInt32, CustomStringConvertible {
     case minimal
     case metadata
@@ -657,6 +659,7 @@ public enum Scope: UInt32, CustomStringConvertible {
     }
 }
 
+@frozen
 public enum Stdio: UInt32, CustomStringConvertible {
     case inherit
     case pipe
@@ -669,6 +672,7 @@ public enum Stdio: UInt32, CustomStringConvertible {
     }
 }
 
+@frozen
 public enum Realm: UInt32, CustomStringConvertible {
     case native
     case emulated

@@ -6,6 +6,7 @@ public final class DeviceManager: ObservableObject {
     @Published public private(set) var devices: [Device] = []
     @Published public private(set) var discoveryState: DiscoveryState = .discovering
 
+    @frozen
     public enum DiscoveryState: Equatable {
         case discovering
         case ready

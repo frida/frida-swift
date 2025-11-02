@@ -38,6 +38,7 @@ public final class RpcRequest {
     }
 }
 
+@frozen
 public enum RpcResult<T> {
     case success(T)
     case error(Swift.Error)

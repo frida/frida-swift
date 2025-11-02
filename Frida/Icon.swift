@@ -1,3 +1,4 @@
+@frozen
 public enum Icon {
     case rgba(
         width: Int,
