@@ -1,7 +1,30 @@
 import Frida_Private
 
-public final class Device: CustomStringConvertible, Equatable, Hashable, Identifiable {
-    public weak var delegate: (any DeviceDelegate)?
+public final class Device: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable, Identifiable {
+    public var events: Events {
+        if isLost {
+            return Events { continuation in
+                continuation.yield(.lost)
+                continuation.finish()
+            }
+        } else {
+            return eventSource.makeStream()
+        }
+    }
+
+    public typealias Events = AsyncStream<Event>
+
+    @frozen
+    public enum Event {
+        case spawnAdded(SpawnDetails)
+        case spawnRemoved(SpawnDetails)
+        case childAdded(ChildDetails)
+        case childRemoved(ChildDetails)
+        case processCrashed(CrashDetails)
+        case output(data: [UInt8], fd: Int, pid: UInt)
+        case uninjected(UInt)
+        case lost
+    }
 
     @frozen
     public enum Kind: UInt, CustomStringConvertible {
@@ -18,67 +41,52 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    private typealias SpawnAddedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias SpawnRemovedHandler = @convention(c) (_ device: OpaquePointer, _ spawn: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias ChildAddedHandler = @convention(c) (_ device: OpaquePointer, _ child: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias ChildRemovedHandler = @convention(c) (_ device: OpaquePointer, _ child: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias ProcessCrashedHandler = @convention(c) (_ device: OpaquePointer, _ crash: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias OutputHandler = @convention(c) (_ device: OpaquePointer, _ pid: guint, _ fd: gint,
-        _ data: UnsafePointer<guint8>, _ dataSize: gint, _ userData: gpointer) -> Void
-    private typealias UninjectedHandler = @convention(c) (_ device: OpaquePointer, _ id: guint, _ userData: gpointer) -> Void
-    private typealias LostHandler = @convention(c) (_ device: OpaquePointer, _ userData: gpointer) -> Void
-
     private let handle: OpaquePointer
+    private let eventSource = AsyncEventSource<Event>()
+
+    public let icon: Icon?
+
+    public let bus: Bus
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        let rawHandle = gpointer(handle)
-        g_signal_connect_data(rawHandle, "spawn-added", unsafeBitCast(onSpawnAdded, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "spawn-removed", unsafeBitCast(onSpawnRemoved, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "child-added", unsafeBitCast(onChildAdded, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "child-removed", unsafeBitCast(onChildRemoved, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "process-crashed", unsafeBitCast(onProcessCrashed, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "output", unsafeBitCast(onOutput, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "uninjected", unsafeBitCast(onUninjected, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "lost", unsafeBitCast(onLost, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
+        self.icon = Device.loadIcon(handle)
+
+        let busHandle = frida_device_get_bus(handle)!
+        g_object_ref(gpointer(busHandle))
+        self.bus = Bus(handle: busHandle)
+
+        connectSignal(instance: self, handle: handle, signal: "spawn-added", handler: onSpawnAdded)
+        connectSignal(instance: self, handle: handle, signal: "spawn-removed", handler: onSpawnRemoved)
+        connectSignal(instance: self, handle: handle, signal: "child-added", handler: onChildAdded)
+        connectSignal(instance: self, handle: handle, signal: "child-removed", handler: onChildRemoved)
+        connectSignal(instance: self, handle: handle, signal: "process-crashed", handler: onProcessCrashed)
+        connectSignal(instance: self, handle: handle, signal: "output", handler: onOutput)
+        connectSignal(instance: self, handle: handle, signal: "uninjected", handler: onUninjected)
+        connectSignal(instance: self, handle: handle, signal: "lost", handler: onLost)
     }
 
     deinit {
+        eventSource.finish()
         g_object_unref(gpointer(handle))
     }
 
     public var id: String {
-        return String(cString: frida_device_get_id(handle))
+        String(cString: frida_device_get_id(handle))
     }
 
     public var name: String {
-        return String(cString: frida_device_get_name(handle))
+        String(cString: frida_device_get_name(handle))
     }
 
-    public lazy var icon: Icon? = {
+    static func loadIcon(_ handle: OpaquePointer) -> Icon? {
         guard let iconVariant = frida_device_get_icon(handle) else {
             return nil
         }
         let iconDict = Marshal.valueFromVariant(iconVariant) as! [String: Any]
         return Marshal.iconFromVarDict(iconDict)
-    }()
+    }
 
     public var kind: Kind {
         switch frida_device_get_dtype(handle) {
@@ -93,22 +101,16 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    public lazy var bus: Bus = {
-        let busHandle = frida_device_get_bus(handle)!
-        g_object_ref(gpointer(busHandle))
-        return Bus(handle: busHandle)
-    }()
-
     public var isLost: Bool {
-        return frida_device_is_lost(handle) != 0
+        frida_device_is_lost(handle) != 0
     }
 
     public var description: String {
-        return "Frida.Device(id: \"\(id)\", name: \"\(name)\", kind: \"\(kind)\")"
+        "Frida.Device(id: \"\(id)\", name: \"\(name)\", kind: \"\(kind)\")"
     }
 
     public static func == (lhs: Device, rhs: Device) -> Bool {
-        return lhs.handle == rhs.handle
+        lhs.handle == rhs.handle
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -523,72 +525,52 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    private let onSpawnAdded: SpawnAddedHandler = { _, rawSpawn, userData in
+    private let onSpawnAdded: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawSpawn, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawSpawn))
         let spawn = SpawnDetails(handle: rawSpawn)
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didAddSpawn: spawn)
-            }
-        }
+        connection.instance?.publish(.spawnAdded(spawn))
     }
 
-    private let onSpawnRemoved: SpawnRemovedHandler = { _, rawSpawn, userData in
+    private let onSpawnRemoved: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawSpawn, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawSpawn))
         let spawn = SpawnDetails(handle: rawSpawn)
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didRemoveSpawn: spawn)
-            }
-        }
+        connection.instance?.publish(.spawnRemoved(spawn))
     }
 
-    private let onChildAdded: ChildAddedHandler = { _, rawChild, userData in
+    private let onChildAdded: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawChild, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawChild))
         let child = ChildDetails(handle: rawChild)
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didAddChild: child)
-            }
-        }
+        connection.instance?.publish(.childAdded(child))
     }
 
-    private let onChildRemoved: ChildRemovedHandler = { _, rawChild, userData in
+    private let onChildRemoved: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawChild, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawChild))
         let child = ChildDetails(handle: rawChild)
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didRemoveChild: child)
-            }
-        }
+        connection.instance?.publish(.childRemoved(child))
     }
 
-    private let onProcessCrashed: ProcessCrashedHandler = { _, rawCrash, userData in
+    private let onProcessCrashed: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawCrash, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         g_object_ref(gpointer(rawCrash))
         let crash = CrashDetails(handle: rawCrash)
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didObserveCrash: crash)
-            }
-        }
+        connection.instance?.publish(.processCrashed(crash))
     }
 
-    private let onOutput: OutputHandler = { _, pid, fd, rawData, rawDataSize, userData in
+    private let onOutput: @convention(c) (OpaquePointer, guint, gint, UnsafePointer<guint8>, gint, gpointer) -> Void = { _, pid, fd, rawData, rawDataSize, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         var data = [UInt8](repeating: 0, count: Int(rawDataSize))
@@ -596,35 +578,26 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
             memcpy(dst.baseAddress, rawData, Int(rawDataSize))
         }
 
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didOutput: data, toFileDescriptor: Int(fd), fromProcess: UInt(pid))
-            }
-        }
+        connection.instance?.publish(.output(data: data, fd: Int(fd), pid: UInt(pid)))
     }
 
-    private let onUninjected: UninjectedHandler = { _, id, userData in
+    private let onUninjected: @convention(c) (OpaquePointer, guint, gpointer) -> Void = { _, id, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+
+        connection.instance?.publish(.uninjected(UInt(id)))
+    }
+
+    private let onLost: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
         if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.device(device, didUninject: UInt(id))
-            }
+            device.publish(.lost)
+            device.eventSource.finish()
         }
     }
 
-    private let onLost: LostHandler = { _, userData in
-        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
-
-        if let device = connection.instance {
-            Runtime.scheduleOnMainThread {
-                device.delegate?.deviceLost(device)
-            }
-        }
-    }
-
-    private let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Device>>.fromOpaque(data!).release()
+    private func publish(_ event: Event) {
+        eventSource.yield(event)
     }
 }
 

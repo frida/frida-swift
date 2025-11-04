@@ -1,13 +1,29 @@
 import Frida_Private
 
-public final class Script: CustomStringConvertible, Equatable, Hashable {
-    public weak var delegate: (any ScriptDelegate)?
+public final class Script: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    public var events: Events {
+        if isDestroyed {
+            return Events { continuation in
+                continuation.yield(.destroyed)
+                continuation.finish()
+            }
+        } else {
+            return eventSource.makeStream()
+        }
+    }
 
-    private typealias DestroyHandler = @convention(c) (_ script: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias MessageHandler = @convention(c) (_ script: OpaquePointer, _ json: UnsafePointer<gchar>,
-        _ data: OpaquePointer?, _ userData: gpointer) -> Void
+    public typealias Events = AsyncStream<Event>
+
+    @frozen
+    public enum Event {
+        case destroyed
+        case message(message: Any, data: [UInt8]?)
+    }
 
     private let handle: OpaquePointer
+    private let eventSource = AsyncEventSource<Event>()
+
+    private var _exports: Exports
 
     private var rpcContinuations: [Int: (RpcInternalResult) -> Void] = [:]
     private var requestId = 0
@@ -15,22 +31,25 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        let rawHandle = gpointer(handle)
-        g_signal_connect_data(rawHandle, "destroyed", unsafeBitCast(onDestroyed, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
-        g_signal_connect_data(rawHandle, "message", unsafeBitCast(onMessage, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
+        _exports = Exports()
+        _exports.script = self
+
+        connectSignal(instance: self, handle: handle, signal: "destroyed", handler: onDestroyed)
+        connectSignal(instance: self, handle: handle, signal: "message", handler: onMessage)
     }
 
     deinit {
+        eventSource.finish()
         g_object_unref(gpointer(handle))
     }
 
-    public lazy var exports: Exports = {
-        return Exports(script: self)
-    }()
+    public var isDestroyed: Bool {
+        frida_script_is_destroyed(handle) != 0
+    }
+
+    public var exports: Exports {
+        _exports
+    }
 
     public var description: String {
         return "Frida.Script()"
@@ -143,7 +162,7 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    private let onDestroyed: DestroyHandler = { _, userData in
+    private let onDestroyed: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         if let script = connection.instance {
@@ -152,13 +171,12 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
                 stackTrace: nil
             ))
 
-            Runtime.scheduleOnMainThread {
-                script.delegate?.scriptDestroyed(script)
-            }
+            script.publish(.destroyed)
+            script.eventSource.finish()
         }
     }
 
-    private let onMessage: MessageHandler = { _, rawJson, rawData, userData in
+    private let onMessage: @convention(c) (OpaquePointer, UnsafePointer<gchar>, OpaquePointer?, gpointer) -> Void = { _, rawJson, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         guard let script = connection.instance else { return }
@@ -177,11 +195,7 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
             let requestId = payload[1] as? Int,
             let status = payload[2] as? String
         else {
-            Runtime.scheduleOnMainThread {
-                script.delegate?.script(script,
-                                        didReceiveMessage: parsedAny,
-                                        withData: dataBytes)
-            }
+            script.publish(.message(message: parsedAny, data: dataBytes))
             return
         }
 
@@ -205,19 +219,15 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    private let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Script>>.fromOpaque(data!).release()
+    private func publish(_ event: Event) {
+        eventSource.yield(event)
     }
 
     // MARK: - RPC
 
     @dynamicMemberLookup
     public struct Exports {
-        unowned let script: Script
-
-        init(script: Script) {
-            self.script = script
-        }
+        unowned var script: Script!
 
         public subscript(dynamicMember functionName: String) -> RpcFunction {
             get {

@@ -1,58 +1,50 @@
 import Frida_Private
 
-public final class Bus: Hashable {
-    public weak var delegate: (any BusDelegate)?
+public final class Bus: @unchecked Sendable, Hashable {
+    public var events: Events {
+        if isDetached {
+            return Events { continuation in
+                continuation.yield(.detached)
+                continuation.finish()
+            }
+        } else {
+            return eventSource.makeStream()
+        }
+    }
 
-    private typealias DetachHandler =
-        @convention(c) (_ bus: OpaquePointer, _ userData: gpointer) -> Void
-    private typealias MessageHandler =
-        @convention(c) (_ bus: OpaquePointer,
-                        _ json: UnsafePointer<gchar>,
-                        _ data: OpaquePointer?,
-                        _ userData: gpointer) -> Void
+    public typealias Events = AsyncStream<Event>
+
+    @frozen
+    public enum Event {
+        case detached
+        case message(message: Any, data: [UInt8]?)
+    }
 
     private let handle: OpaquePointer
-    private var onDetachedHandler: gulong = 0
-    private var onMessageHandler: gulong = 0
+    private let eventSource = AsyncEventSource<Event>()
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        let rawHandle = gpointer(handle)
-
-        onDetachedHandler = g_signal_connect_data(
-            rawHandle,
-            "detached",
-            unsafeBitCast(Bus.onDetached, to: GCallback.self),
-            gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-            Bus.releaseConnection,
-            GConnectFlags(0)
-        )
-
-        onMessageHandler = g_signal_connect_data(
-            rawHandle,
-            "message",
-            unsafeBitCast(Bus.onMessage, to: GCallback.self),
-            gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-            Bus.releaseConnection,
-            GConnectFlags(0)
-        )
+        connectSignal(instance: self, handle: handle, signal: "detached", handler: onDetached)
+        connectSignal(instance: self, handle: handle, signal: "message", handler: onMessage)
     }
 
     deinit {
+        eventSource.finish()
         g_object_unref(gpointer(handle))
     }
 
-    public var isClosed: Bool {
-        return frida_bus_is_detached(handle) != 0
+    public var isDetached: Bool {
+        frida_bus_is_detached(handle) != 0
     }
 
     public var description: String {
-        return "Frida.Bus()"
+        "Frida.Bus()"
     }
 
     public static func == (lhs: Bus, rhs: Bus) -> Bool {
-        return lhs.handle == rhs.handle
+        lhs.handle == rhs.handle
     }
 
     public func hash(into hasher: inout Hasher) {
@@ -90,33 +82,25 @@ public final class Bus: Hashable {
         g_bytes_unref(rawData)
     }
 
-    private static let onDetached: DetachHandler = { _, userData in
+    private let onDetached: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
         let connection = Unmanaged<SignalConnection<Bus>>.fromOpaque(userData).takeUnretainedValue()
 
         if let bus = connection.instance {
-            Runtime.scheduleOnMainThread {
-                bus.delegate?.busDetached(bus)
-            }
+            bus.publish(.detached)
+            bus.eventSource.finish()
         }
     }
 
-    private static let onMessage: MessageHandler = { _, rawJson, rawBytes, userData in
+    private let onMessage: @convention(c) (OpaquePointer, UnsafePointer<gchar>, OpaquePointer?, gpointer) -> Void = { _, rawJson, rawBytes, userData in
         let connection = Unmanaged<SignalConnection<Bus>>.fromOpaque(userData).takeUnretainedValue()
 
         let message = Marshal.valueFromJSON(Marshal.stringFromCString(rawJson))
         let data: [UInt8]? = Marshal.arrayFromBytes(rawBytes)
 
-        if let bus = connection.instance {
-            Runtime.scheduleOnMainThread {
-                bus.delegate?.bus(bus,
-                                  didReceiveMessage: message,
-                                  withData: data)
-            }
-        }
+        connection.instance?.publish(.message(message: message, data: data))
     }
 
-    private static let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Bus>>
-            .fromOpaque(data!).release()
+    private func publish(_ event: Event) {
+        eventSource.yield(event)
     }
 }

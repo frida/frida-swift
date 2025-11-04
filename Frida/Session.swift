@@ -1,22 +1,35 @@
 import Frida_Private
 
-public final class Session: CustomStringConvertible, Equatable, Hashable {
-    public weak var delegate: (any SessionDelegate)?
+public final class Session: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    public var events: Events {
+        if isDetached {
+            return Events { continuation in
+                continuation.yield(.detached(reason: .applicationRequested, crash: nil))
+                continuation.finish()
+            }
+        } else {
+            return eventSource.makeStream()
+        }
+    }
 
-    private typealias DetachedHandler = @convention(c) (_ session: OpaquePointer, _ reason: Int, _ crash: OpaquePointer?, _ userData: gpointer) -> Void
+    public typealias Events = AsyncStream<Event>
+
+    @frozen
+    public enum Event {
+        case detached(reason: SessionDetachReason, crash: CrashDetails?)
+    }
 
     private let handle: OpaquePointer
+    private let eventSource = AsyncEventSource<Event>()
 
     init(handle: OpaquePointer) {
         self.handle = handle
 
-        let rawHandle = gpointer(handle)
-        g_signal_connect_data(rawHandle, "detached", unsafeBitCast(onDetached, to: GCallback.self),
-                              gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-                              releaseConnection, GConnectFlags(0))
+        connectSignal(instance: self, handle: handle, signal: "detached", handler: onDetached)
     }
 
     deinit {
+        eventSource.finish()
         g_object_unref(gpointer(handle))
     }
 
@@ -274,7 +287,7 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    private let onDetached: DetachedHandler = { _, reason, rawCrash, userData in
+    private let onDetached: @convention(c) (OpaquePointer, Int, OpaquePointer?, gpointer) -> Void = { _, reason, rawCrash, userData in
         let connection = Unmanaged<SignalConnection<Session>>.fromOpaque(userData).takeUnretainedValue()
 
         var crash: CrashDetails? = nil
@@ -283,15 +296,16 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
             crash = CrashDetails(handle: rawCrash)
         }
 
-        if let session = connection.instance {
-            Runtime.scheduleOnMainThread {
-                session.delegate?.session(session, didDetach: SessionDetachReason(rawValue: reason)!, crash: crash)
-            }
+        if let session = connection.instance,
+           let detachReason = SessionDetachReason(rawValue: reason) {
+
+            session.publish(.detached(reason: detachReason, crash: crash))
+            session.eventSource.finish()
         }
     }
 
-    private let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<Session>>.fromOpaque(data!).release()
+    private func publish(_ event: Event) {
+        eventSource.yield(event)
     }
 }
 

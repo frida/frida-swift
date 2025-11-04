@@ -1,36 +1,18 @@
-import Combine
 import Frida_Private
 
-public final class DeviceManager: ObservableObject {
-    @Published public private(set) var devices: [Device] = []
-    @Published public private(set) var discoveryState: DiscoveryState = .discovering
-
-    @frozen
-    public enum DiscoveryState: Equatable {
-        case discovering
-        case ready
-    }
-
+public final class DeviceManager: @unchecked Sendable {
     private let handle: OpaquePointer
+    private let store = DeviceStore()
 
-    private typealias AddedHandler = @convention(c) (
-        _ manager: OpaquePointer,
-        _ device: OpaquePointer,
-        _ userData: gpointer
-    ) -> Void
-
-    private typealias RemovedHandler = @convention(c) (
-        _ manager: OpaquePointer,
-        _ device: OpaquePointer,
-        _ userData: gpointer
-    ) -> Void
+    public typealias DeviceSnapshots = AsyncStream<[Device]>
 
     public init() {
         frida_init()
 
         handle = frida_device_manager_new()
 
-        setupSignals()
+        connectSignal(instance: self, handle: handle, signal: "added", handler: onAdded)
+        connectSignal(instance: self, handle: handle, signal: "removed", handler: onRemoved)
 
         Task {
             await self.performInitialDiscovery()
@@ -39,6 +21,14 @@ public final class DeviceManager: ObservableObject {
 
     deinit {
         g_object_unref(gpointer(handle))
+    }
+
+    public func currentDevices() async -> [Device] {
+        await store.snapshot()
+    }
+
+    public func snapshots() async -> DeviceSnapshots {
+        await store.stream()
     }
 
     public func close() async throws {
@@ -139,11 +129,10 @@ public final class DeviceManager: ObservableObject {
     private func performInitialDiscovery() async {
         do {
             let snapshot = try await fetchInitialDevices()
-            self.devices = snapshot
+            await store.handleInitialSnapshot(snapshot)
         } catch {
-            self.devices = []
+            await store.handleInitialSnapshot([])
         }
-        self.discoveryState = .ready
     }
 
     private func fetchInitialDevices() async throws -> [Device] {
@@ -175,63 +164,61 @@ public final class DeviceManager: ObservableObject {
         }
     }
 
-    private func handleAdded(_ device: Device) {
-        self.devices.append(device)
-    }
+    private let onAdded: @convention(c) (OpaquePointer?, OpaquePointer?, gpointer?) -> Void = { _, rawDevice, userData in
+        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData!).takeUnretainedValue()
 
-    private func handleRemoved(_ device: Device) {
-        self.devices.removeAll { $0 == device }
-    }
-
-    private func setupSignals() {
-        let rawHandle = gpointer(handle)
-
-        g_signal_connect_data(
-            rawHandle,
-            "added",
-            unsafeBitCast(DeviceManager.onAdded, to: GCallback.self),
-            gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-            DeviceManager.releaseConnection,
-            GConnectFlags(0)
-        )
-
-        g_signal_connect_data(
-            rawHandle,
-            "removed",
-            unsafeBitCast(DeviceManager.onRemoved, to: GCallback.self),
-            gpointer(Unmanaged.passRetained(SignalConnection(instance: self)).toOpaque()),
-            DeviceManager.releaseConnection,
-            GConnectFlags(0)
-        )
-    }
-
-    private static let onAdded: AddedHandler = { _, rawDevice, userData in
-        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
+        guard let manager = connection.instance, let rawDevice = rawDevice else { return }
 
         g_object_ref(gpointer(rawDevice))
         let device = Device(handle: rawDevice)
 
-        if let manager = connection.instance {
-            Runtime.scheduleOnMainThread {
-                manager.handleAdded(device)
-            }
+        Task {
+            await manager.store.handleAdded(device)
         }
     }
 
-    private static let onRemoved: RemovedHandler = { _, rawDevice, userData in
-        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
+    private let onRemoved: @convention(c) (OpaquePointer?, OpaquePointer?, gpointer?) -> Void = { _, rawDevice, userData in
+        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData!).takeUnretainedValue()
+
+        guard let manager = connection.instance, let rawDevice = rawDevice else { return }
 
         g_object_ref(gpointer(rawDevice))
         let device = Device(handle: rawDevice)
 
-        if let manager = connection.instance {
-            Runtime.scheduleOnMainThread {
-                manager.handleRemoved(device)
-            }
+        Task {
+            await manager.store.handleRemoved(device)
         }
     }
+}
 
-    private static let releaseConnection: GClosureNotify = { data, _ in
-        Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(data!).release()
+actor DeviceStore {
+    private var devices: [Device] = []
+    private let events = AsyncEventSource<[Device]>()
+
+    func handleInitialSnapshot(_ devices: [Device]) {
+        self.devices = devices
+        events.yield(self.devices)
+    }
+
+    func handleAdded(_ device: Device) {
+        devices.append(device)
+        events.yield(devices)
+    }
+
+    func handleRemoved(_ device: Device) {
+        devices.removeAll { $0 == device }
+        events.yield(devices)
+    }
+
+    func snapshot() -> [Device] {
+        devices
+    }
+
+    func stream() -> AsyncStream<[Device]> {
+        events.makeStream()
+    }
+
+    func finish() {
+        events.finish()
     }
 }

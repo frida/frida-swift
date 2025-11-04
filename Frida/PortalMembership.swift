@@ -1,6 +1,6 @@
 import Frida_Private
 
-public final class PortalMembership: CustomStringConvertible, Equatable, Hashable {
+public final class PortalMembership: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
 
     init(handle: OpaquePointer) {

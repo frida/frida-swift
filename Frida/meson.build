@@ -2,14 +2,14 @@ subdir('Frida_Private')
 
 sources = [
   'ApplicationDetails.swift',
+  'AsyncEventSource.swift',
   'AsyncOperation.swift',
   'Bus.swift',
-  'BusDelegate.swift',
   'ChildDetails.swift',
   'CrashDetails.swift',
   'Device.swift',
-  'DeviceDelegate.swift',
   'DeviceManager.swift',
+  'DeviceListModel.swift',
   'Error.swift',
   'IOStream.swift',
   'Icon+AppKit.swift',
@@ -24,9 +24,7 @@ sources = [
   'RpcFunction.swift',
   'Runtime.swift',
   'Script.swift',
-  'ScriptDelegate.swift',
   'Session.swift',
-  'SessionDelegate.swift',
   'SignalConnection.swift',
   'SpawnDetails.swift',
 ]

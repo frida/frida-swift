@@ -1,12 +1,7 @@
-import Dispatch
 import Frida_Private
 
 class Runtime {
     typealias Handler = @convention(block) () -> Void
-
-    static func scheduleOnMainThread(_ handler: @escaping Handler) {
-        DispatchQueue.main.async(execute: handler)
-    }
 
     static func scheduleOnFridaThread(_ handler: @escaping Handler) {
         let data = gpointer(Unmanaged.passRetained(ScheduledOperation(handler: handler)).toOpaque())
