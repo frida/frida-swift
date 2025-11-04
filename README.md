@@ -162,8 +162,7 @@ func testFullCycle() async throws {
 
 `frida-swift` aims to be:
 
-- **Swifty** — embracing `async/await`, `@MainActor`, and SwiftUI’s reactive
-  model.
+- **Swifty** — embracing `async/await`, and SwiftUI’s reactive model.
 - **Zero boilerplate** — no manual threading, no delegate wiring unless truly
   necessary.
 - **Faithful to Frida** — what you can do in Frida’s C or JS APIs, you can do

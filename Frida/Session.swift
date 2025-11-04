@@ -44,7 +44,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func detach() async throws {
         try await fridaAsync(Void.self) { op in
             frida_session_detach(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -63,7 +62,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func resume() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_session_resume(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -82,7 +80,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func enableChildGating() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_session_enable_child_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -101,7 +98,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func disableChildGating() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_session_disable_child_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -120,7 +116,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func createScript(_ source: String, name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> Script {
         return try await fridaAsync(Script.self) { op in
             let options = Session.parseScriptOptions(name, runtime)
@@ -144,7 +139,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func createScript(_ bytes: [UInt8], name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> Script {
         return try await fridaAsync(Script.self) { op in
             let rawBytes = Marshal.bytesFromArray(bytes)
@@ -170,7 +164,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func compileScript(_ source: String, name: String? = nil, runtime: ScriptRuntime? = nil) async throws -> [UInt8] {
         return try await fridaAsync([UInt8].self) { op in
             let options = Session.parseScriptOptions(name, runtime)
@@ -209,7 +202,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         return options
     }
 
-    @MainActor
     public func setupPeerConnection(stunServer: String? = nil, relays: [Relay]? = nil) async throws {
         return try await fridaAsync(Void.self) { op in
             let options = frida_peer_options_new()
@@ -240,7 +232,6 @@ public final class Session: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func joinPortal(_ address: String, certificate: String? = nil, token: String? = nil, acl: [String]? = nil) async throws -> PortalMembership {
         let options = frida_portal_options_new()
         defer { g_object_unref(gpointer(options)) }

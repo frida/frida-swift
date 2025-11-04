@@ -33,7 +33,6 @@ public final class IOStream: CustomStringConvertible, Equatable, Hashable {
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func close(_ count: UInt) async throws {
         try await fridaAsync(Void.self) { op in
             let userData = op.userData
@@ -54,7 +53,6 @@ public final class IOStream: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func read(_ count: UInt) async throws -> [UInt8] {
         try await fridaAsync([UInt8].self) { op in
             let userData = op.userData
@@ -78,7 +76,6 @@ public final class IOStream: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func readAll(_ count: UInt) async throws -> [UInt8] {
         try await fridaAsync([UInt8].self) { op in
             let buffer = g_malloc(count)!
@@ -114,7 +111,6 @@ public final class IOStream: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func write(_ data: [UInt8]) async throws -> UInt {
         try await fridaAsync(UInt.self) { op in
             let bytesHandle = Marshal.bytesFromArray(data)
@@ -142,7 +138,6 @@ public final class IOStream: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func writeAll(_ data: [UInt8]) async throws {
         try await fridaAsync(Void.self) { op in
             let byteCount = data.count

@@ -44,7 +44,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func load() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_script_load(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -63,7 +62,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func unload() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_script_unload(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -82,7 +80,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func eternalize() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_script_eternalize(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -110,7 +107,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         g_bytes_unref(rawData)
     }
 
-    @MainActor
     public func enableDebugger(_ port: UInt16 = 0) async throws {
         return try await fridaAsync(Void.self) { op in
             frida_script_enable_debugger(self.handle, port, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -129,7 +125,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     public func disableDebugger() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_script_disable_debugger(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -152,6 +147,11 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
         if let script = connection.instance {
+            script.failAllRpcContinuations(Error.rpcError(
+                message: "Script destroyed",
+                stackTrace: nil
+            ))
+
             Runtime.scheduleOnMainThread {
                 script.delegate?.scriptDestroyed(script)
             }
@@ -161,53 +161,47 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
     private let onMessage: MessageHandler = { _, rawJson, rawData, userData in
         let connection = Unmanaged<SignalConnection<Script>>.fromOpaque(userData).takeUnretainedValue()
 
+        guard let script = connection.instance else { return }
+
         let jsonString = Marshal.stringFromCString(rawJson)
         let parsedAny = Marshal.valueFromJSON(jsonString)
         let dataBytes = Marshal.arrayFromBytes(rawData)
 
-        if
-            let script = connection.instance,
+        guard
             let msgDict = parsedAny as? [String: Any],
             let payloadAny = msgDict["payload"],
             let payload = payloadAny as? [Any],
             payload.count >= 3,
             let kind = payload[0] as? String,
             kind == "frida:rpc",
-            let requestIdAny = payload[1] as? Int,
+            let requestId = payload[1] as? Int,
             let status = payload[2] as? String
-        {
-            if let cont = script.rpcContinuations[requestIdAny] {
-                if status == "ok" {
-                    var result: Any? = nil
-                    if let db = dataBytes {
-                        result = db
-                    } else if payload.count >= 4 {
-                        result = payload[3]
-                    }
-
-                    cont(.success(value: result))
-                } else {
-                    let errorMessage: String = (payload.count >= 4 ? (payload[3] as? String ?? "") : "")
-                    var stackTraceMaybe: String? = nil
-                    if payload.count >= 6 {
-                        stackTraceMaybe = payload[5] as? String
-                    }
-
-                    let err = Error.rpcError(message: errorMessage,
-                                              stackTrace: stackTraceMaybe)
-                    cont(.error(err))
-                }
-
-                return
-            }
-        }
-
-        if let script = connection.instance {
+        else {
             Runtime.scheduleOnMainThread {
                 script.delegate?.script(script,
                                         didReceiveMessage: parsedAny,
                                         withData: dataBytes)
             }
+            return
+        }
+
+        guard let cont = script.rpcContinuations[requestId] else {
+            return
+        }
+        script.rpcContinuations[requestId] = nil
+
+        if status == "ok" {
+            var result: Any? = nil
+            if let db = dataBytes {
+                result = db
+            } else if payload.count >= 4 {
+                result = payload[3]
+            }
+            cont(.success(value: result))
+        } else {
+            let message = (payload.count >= 4 ? (payload[3] as? String ?? "") : "")
+            let stackTrace = (payload.count >= 6 ? payload[5] as? String : nil)
+            cont(.error(Error.rpcError(message: message, stackTrace: stackTrace)))
         }
     }
 
@@ -225,7 +219,6 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
             self.script = script
         }
 
-        @MainActor
         public subscript(dynamicMember functionName: String) -> RpcFunction {
             get {
                 return RpcFunction(script: self.script, functionName: functionName)
@@ -233,31 +226,48 @@ public final class Script: CustomStringConvertible, Equatable, Hashable {
         }
     }
 
-    @MainActor
     internal func rpcCall(functionName: String, args: [Any]) async throws -> Any? {
-        let requestId = makeRequestId()
-
-        let message: [Any] = [
-            String(describing: FridaRpcKind.default),
-            requestId,
-            String(describing: FridaRpcOperation.call),
-            functionName,
-            args
-        ]
-
-        return try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Any?, Swift.Error>) in
-            rpcContinuations[requestId] = { [weak self] result in
-                self?.rpcContinuations.removeValue(forKey: requestId)
-
-                switch result {
-                case let .success(value: value):
-                    cont.resume(returning: value)
-                case let .error(err):
-                    cont.resume(throwing: err)
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Any?, Swift.Error>) in
+            Runtime.scheduleOnFridaThread { [weak self] in
+                guard let self else {
+                    cont.resume(throwing: Error.rpcError(
+                        message: "Script deallocated before RPC could be scheduled",
+                        stackTrace: nil
+                    ))
+                    return
                 }
-            }
 
-            self.post(message)
+                let id = self.requestId
+                self.requestId &+= 1
+
+                let message: [Any] = [
+                    String(describing: FridaRpcKind.default),
+                    id,
+                    String(describing: FridaRpcOperation.call),
+                    functionName,
+                    args
+                ]
+
+                self.rpcContinuations[id] = { result in
+                    switch result {
+                    case let .success(value):
+                        cont.resume(returning: value)
+                    case let .error(error):
+                        cont.resume(throwing: error)
+                    }
+                }
+
+                self.post(message)
+            }
+        }
+    }
+
+    private func failAllRpcContinuations(_ error: Swift.Error) {
+        let pending = rpcContinuations.values
+        rpcContinuations.removeAll()
+
+        for cont in pending {
+            cont(.error(error))
         }
     }
 

@@ -115,7 +115,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func querySystemParameters() async throws -> [String: Any] {
         return try await fridaAsync([String: Any].self) { op in
             frida_device_query_system_parameters(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -136,7 +135,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func getFrontmostApplication(scope: Scope? = nil) async throws -> ApplicationDetails? {
         return try await fridaAsync(ApplicationDetails?.self) { op in
             let options = frida_frontmost_query_options_new()
@@ -164,7 +162,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func enumerateApplications(identifiers: [String]? = nil, scope: Scope? = nil) async throws -> [ApplicationDetails] {
         return try await fridaAsync([ApplicationDetails].self) { op in
             let options = frida_application_query_options_new()
@@ -203,7 +200,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func enumerateProcesses(pids: [UInt]? = nil, scope: Scope? = nil) async throws -> [ProcessDetails] {
         return try await fridaAsync([ProcessDetails].self) { op in
             let options = frida_process_query_options_new()
@@ -242,7 +238,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func enableSpawnGating() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_device_enable_spawn_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -261,7 +256,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func disableSpawnGating() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_device_disable_spawn_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -280,7 +274,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func enumeratePendingSpawn() async throws -> [SpawnDetails] {
         return try await fridaAsync([SpawnDetails].self) { op in
             frida_device_enumerate_pending_spawn(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -307,7 +300,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func enumeratePendingChildren() async throws -> [ChildDetails] {
         return try await fridaAsync([ChildDetails].self) { op in
             frida_device_enumerate_pending_children(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -334,7 +326,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func spawn(_ program: String, argv: [String]? = nil, envp: [String: String]? = nil, env: [String: String]? = nil,
                       cwd: String? = nil, stdio: Stdio? = nil) async throws -> UInt {
         return try await fridaAsync(UInt.self) { op in
@@ -384,7 +375,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func input(_ pid: UInt, data: [UInt8]) async throws {
         return try await fridaAsync(Void.self) { op in
             let rawData = Marshal.bytesFromArray(data)
@@ -407,7 +397,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func resume(_ pid: UInt) async throws {
         return try await fridaAsync(Void.self) { op in
             frida_device_resume(self.handle, guint(pid), op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -426,7 +415,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func kill(_ pid: UInt) async throws {
         return try await fridaAsync(Void.self) { op in
             frida_device_kill(self.handle, guint(pid), op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -445,7 +433,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func attach(to pid: UInt, realm: Realm? = nil, persistTimeout: UInt? = nil) async throws -> Session {
         return try await fridaAsync(Session.self) { op in
             let options = frida_session_options_new()
@@ -477,7 +464,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func injectLibraryFile(into pid: UInt, path: String, entrypoint: String, data: String) async throws -> UInt {
         return try await fridaAsync(UInt.self) { op in
             frida_device_inject_library_file(self.handle, guint(pid), path, entrypoint, data, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -496,7 +482,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func injectLibraryBlob(into pid: UInt, blob: [UInt8], entrypoint: String, data: String) async throws -> UInt {
         return try await fridaAsync(UInt.self) { op in
             let rawBlob = Marshal.bytesFromArray(blob)
@@ -519,7 +504,6 @@ public final class Device: CustomStringConvertible, Equatable, Hashable, Identif
         }
     }
 
-    @MainActor
     public func openChannel(_ address: String) async throws -> IOStream {
         return try await fridaAsync(IOStream.self) { op in
             frida_device_open_channel(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in

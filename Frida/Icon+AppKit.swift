@@ -11,4 +11,3 @@ public extension Icon {
     }
 }
 #endif
-

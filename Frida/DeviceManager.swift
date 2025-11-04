@@ -1,7 +1,6 @@
 import Combine
 import Frida_Private
 
-@MainActor
 public final class DeviceManager: ObservableObject {
     @Published public private(set) var devices: [Device] = []
     @Published public private(set) var discoveryState: DiscoveryState = .discovering

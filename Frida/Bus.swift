@@ -59,7 +59,6 @@ public final class Bus: Hashable {
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func attach() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_bus_attach(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in

@@ -23,7 +23,6 @@ public final class PortalMembership: CustomStringConvertible, Equatable, Hashabl
         hasher.combine(UInt(bitPattern: handle))
     }
 
-    @MainActor
     public func terminate() async throws {
         return try await fridaAsync(Void.self) { op in
             frida_portal_membership_terminate(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in

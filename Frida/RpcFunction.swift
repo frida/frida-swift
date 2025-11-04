@@ -1,4 +1,3 @@
-@MainActor
 @dynamicCallable
 public struct RpcFunction {
     unowned let script: Script

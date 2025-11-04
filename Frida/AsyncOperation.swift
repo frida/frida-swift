@@ -1,6 +1,5 @@
 import Frida_Private
 
-@MainActor
 func fridaAsync<Result>(
     _ resultType: Result.Type,
     startOnFridaThread: @escaping (_ op: InternalOp<Result>) -> Void
@@ -63,15 +62,11 @@ final class InternalOp<Result>: @unchecked Sendable {
     }
 
     func resumeSuccess(_ value: Result) {
-        Runtime.scheduleOnMainThread {
-            self.succeed(value)
-        }
+        self.succeed(value)
     }
 
     func resumeFailure(_ error: Swift.Error) {
-        Runtime.scheduleOnMainThread {
-            self.fail(error)
-        }
+        self.fail(error)
     }
 
     func cancelFromSwiftTask() {
