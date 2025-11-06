@@ -205,13 +205,17 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
         script.rpcContinuations[requestId] = nil
 
         if status == "ok" {
-            var result: Any? = nil
             if let db = dataBytes {
-                result = db
-            } else if payload.count >= 4 {
-                result = payload[3]
+                if payload.count >= 5 {
+                    let valuePart = payload[4]
+                    cont(.success(value: [valuePart, db]))
+                } else {
+                    cont(.success(value: db))
+                }
+            } else {
+                let valuePart: Any? = (payload.count >= 4) ? payload[3] : nil
+                cont(.success(value: valuePart))
             }
-            cont(.success(value: result))
         } else {
             let message = (payload.count >= 4 ? (payload[3] as? String ?? "") : "")
             let stackTrace = (payload.count >= 6 ? payload[5] as? String : nil)
