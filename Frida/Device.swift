@@ -570,15 +570,10 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         connection.instance?.publish(.processCrashed(crash))
     }
 
-    private let onOutput: @convention(c) (OpaquePointer, guint, gint, UnsafePointer<guint8>, gint, gpointer) -> Void = { _, pid, fd, rawData, rawDataSize, userData in
+    private let onOutput: @convention(c) (OpaquePointer, guint, gint, OpaquePointer, gpointer) -> Void = { _, pid, fd, rawData, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
-        var data = [UInt8](repeating: 0, count: Int(rawDataSize))
-        _ = data.withUnsafeMutableBytes { dst in
-            memcpy(dst.baseAddress, rawData, Int(rawDataSize))
-        }
-
-        connection.instance?.publish(.output(data: data, fd: Int(fd), pid: UInt(pid)))
+        connection.instance?.publish(.output(data: Marshal.arrayFromBytes(rawData)!, fd: Int(fd), pid: UInt(pid)))
     }
 
     private let onUninjected: @convention(c) (OpaquePointer, guint, gpointer) -> Void = { _, id, userData in
