@@ -45,7 +45,7 @@ public final class Relay: CustomStringConvertible, Equatable, Hashable {
 }
 
 @frozen
-public enum RelayKind: UInt32, CustomStringConvertible {
+public enum RelayKind: UInt32, Codable, CustomStringConvertible {
     case turnUdp
     case turnTcp
     case turnTls

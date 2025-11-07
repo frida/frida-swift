@@ -310,7 +310,7 @@ public final class Session: @unchecked Sendable, CustomStringConvertible, Equata
 }
 
 @frozen
-public enum SessionDetachReason: Int, CustomStringConvertible {
+public enum SessionDetachReason: Int, Codable, CustomStringConvertible {
     case applicationRequested = 1
     case processReplaced
     case processTerminated
@@ -329,7 +329,7 @@ public enum SessionDetachReason: Int, CustomStringConvertible {
 }
 
 @frozen
-public enum ScriptRuntime: UInt32, CustomStringConvertible {
+public enum ScriptRuntime: UInt32, Codable, CustomStringConvertible {
     case auto
     case qjs
     case v8

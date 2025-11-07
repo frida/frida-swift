@@ -1,5 +1,5 @@
 @frozen
-public enum Error: Swift.Error {
+public enum Error: Swift.Error, Codable {
     case serverNotRunning(String)
     case executableNotFound(String)
     case executableNotSupported(String)

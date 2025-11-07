@@ -65,7 +65,7 @@ public final class ChildDetails: CustomStringConvertible, Equatable, Hashable {
 }
 
 @frozen
-public enum ChildOrigin: UInt32, CustomStringConvertible {
+public enum ChildOrigin: UInt32, Codable, CustomStringConvertible {
     case fork
     case exec
     case spawn

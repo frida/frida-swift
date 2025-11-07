@@ -27,7 +27,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
     }
 
     @frozen
-    public enum Kind: UInt, CustomStringConvertible {
+    public enum Kind: UInt, Codable, CustomStringConvertible {
         case local
         case remote
         case usb
@@ -602,7 +602,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
 }
 
 @frozen
-public enum Scope: UInt32, CustomStringConvertible {
+public enum Scope: UInt32, Codable, CustomStringConvertible {
     case minimal
     case metadata
     case full
@@ -617,7 +617,7 @@ public enum Scope: UInt32, CustomStringConvertible {
 }
 
 @frozen
-public enum Stdio: UInt32, CustomStringConvertible {
+public enum Stdio: UInt32, Codable, CustomStringConvertible {
     case inherit
     case pipe
 
@@ -630,7 +630,7 @@ public enum Stdio: UInt32, CustomStringConvertible {
 }
 
 @frozen
-public enum Realm: UInt32, CustomStringConvertible {
+public enum Realm: UInt32, Codable, CustomStringConvertible {
     case native
     case emulated
 
