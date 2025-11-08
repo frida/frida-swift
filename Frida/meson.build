@@ -12,6 +12,7 @@ sources = [
   'Device.swift',
   'DeviceManager.swift',
   'DeviceListModel.swift',
+  'EndpointParameters.swift',
   'Error.swift',
   'File.swift',
   'GType.swift',
