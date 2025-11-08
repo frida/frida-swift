@@ -20,6 +20,7 @@ sources = [
   'Icon+UIKit.swift',
   'Icon.swift',
   'JSON.swift',
+  'MainLoop.swift',
   'Marshal.swift',
   'PortalMembership.swift',
   'ProcessDetails.swift',
