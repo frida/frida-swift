@@ -7,7 +7,7 @@ public final class DeviceManager: @unchecked Sendable {
     public typealias DeviceSnapshots = AsyncStream<[Device]>
 
     public init() {
-        frida_init()
+        Runtime.ensureInitialized()
 
         handle = frida_device_manager_new()
 

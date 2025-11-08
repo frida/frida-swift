@@ -1,7 +1,15 @@
 import Frida_Private
 
-class Runtime {
+enum Runtime {
     typealias Handler = @convention(block) () -> Void
+
+    static func ensureInitialized() {
+        _ = _initialized
+    }
+
+    private static let _initialized: Void = {
+        frida_init()
+    }()
 
     static func scheduleOnFridaThread(_ handler: @escaping Handler) {
         let data = gpointer(Unmanaged.passRetained(ScheduledOperation(handler: handler)).toOpaque())
