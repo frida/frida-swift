@@ -11,6 +11,7 @@ sources = [
   'DeviceManager.swift',
   'DeviceListModel.swift',
   'Error.swift',
+  'File.swift',
   'GType.swift',
   'IOStream.swift',
   'Icon+AppKit.swift',
