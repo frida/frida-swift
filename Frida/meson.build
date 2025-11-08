@@ -29,6 +29,7 @@ sources = [
   'Session.swift',
   'SignalConnection.swift',
   'SpawnDetails.swift',
+  'UUID.swift',
 ]
 
 extra_link_args = []
