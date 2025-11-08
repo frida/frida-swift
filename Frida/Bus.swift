@@ -94,7 +94,7 @@ public final class Bus: @unchecked Sendable, Hashable {
     private let onMessage: @convention(c) (OpaquePointer, UnsafePointer<gchar>, OpaquePointer?, gpointer) -> Void = { _, rawJson, rawBytes, userData in
         let connection = Unmanaged<SignalConnection<Bus>>.fromOpaque(userData).takeUnretainedValue()
 
-        let message = Marshal.valueFromJSON(Marshal.stringFromCString(rawJson))
+        guard let message = try? Marshal.valueFromJSON(Marshal.stringFromCString(rawJson)) else { return }
         let data: [UInt8]? = Marshal.arrayFromBytes(rawBytes)
 
         connection.instance?.publish(.message(message: message, data: data))

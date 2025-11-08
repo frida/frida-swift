@@ -1,7 +1,4 @@
 import Frida_Private
-#if canImport(Foundation)
-import Foundation
-#endif
 
 class Marshal {
     private static let gvariantStringType = g_variant_type_new("s")
@@ -59,7 +56,7 @@ class Marshal {
             }
         }
 
-        fatalError("Unexpected GError domain \(domain) code \(code): \(message)")
+        return Error.invalidArgument(message)
     }
 
     static func dictionaryFromParametersDict(_ hashTable: OpaquePointer) -> [String: Any] {
@@ -294,24 +291,13 @@ class Marshal {
         return result
     }
 
-    #if !canImport(Foundation)
-    #error("Frida Swift currently requires Foundation for JSON encoding/decoding. TODO: add Foundation-less fallback.")
-    #else
-
     static func jsonFromValue(_ value: Any) -> String {
-        guard JSONSerialization.isValidJSONObject(value),
-              let data = try? JSONSerialization.data(withJSONObject: value, options: [])
-        else {
-            fatalError("Marshal.jsonFromValue(_:): value is not valid JSON")
-        }
-        return String(decoding: data, as: UTF8.self)
+        return try! JSON.string(from: value)
     }
 
-    static func valueFromJSON(_ json: String) -> Any {
-        return try! JSONSerialization.jsonObject(with: json.data(using: .utf8)!, options: [])
+    static func valueFromJSON(_ json: String) throws -> Any {
+        return try! JSON.value(from: json)
     }
-
-    #endif
 
     static func certificateFromString(_ string: String) throws -> UnsafeMutablePointer<GTlsCertificate> {
         var result: UnsafeMutablePointer<GTlsCertificate>?

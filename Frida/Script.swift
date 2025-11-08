@@ -182,7 +182,7 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
         guard let script = connection.instance else { return }
 
         let jsonString = Marshal.stringFromCString(rawJson)
-        let parsedAny = Marshal.valueFromJSON(jsonString)
+        guard let parsedAny = try? Marshal.valueFromJSON(jsonString) else { return }
         let dataBytes = Marshal.arrayFromBytes(rawData)
 
         guard
