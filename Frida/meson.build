@@ -30,6 +30,7 @@ sources = [
   'Session.swift',
   'SignalConnection.swift',
   'SpawnDetails.swift',
+  'TlsCertificate.swift',
   'UUID.swift',
 ]
 
