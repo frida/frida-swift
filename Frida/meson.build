@@ -26,6 +26,7 @@ sources = [
   'MainLoop.swift',
   'Marshal.swift',
   'PortalMembership.swift',
+  'PortalService.swift',
   'ProcessDetails.swift',
   'Relay.swift',
   'RpcFunction.swift',
