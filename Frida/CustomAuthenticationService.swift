@@ -14,7 +14,7 @@ public final class CustomAuthenticationService: @unchecked Sendable, Authenticat
     }
 
     private static let quark: GQuark = {
-        let key = "frida-swift-authentication-service"
+        let key = "frida-custom-authentication-service"
         return key.withCString { cStr in
             g_quark_from_string(cStr)
         }
