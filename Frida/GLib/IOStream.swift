@@ -19,15 +19,15 @@ extension GLib {
         }
 
         public var isClosed: Bool {
-            return g_io_stream_is_closed(handle) != 0
+            g_io_stream_is_closed(handle) != 0
         }
 
         public var description: String {
-            return "GLib.IOStream()"
+            "GLib.IOStream()"
         }
 
         public static func == (lhs: IOStream, rhs: IOStream) -> Bool {
-            return lhs.handle == rhs.handle
+            lhs.handle == rhs.handle
         }
 
         public func hash(into hasher: inout Hasher) {
