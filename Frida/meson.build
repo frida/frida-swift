@@ -14,16 +14,11 @@ sources = [
   'DeviceManager.swift',
   'EndpointParameters.swift',
   'Error.swift',
-  'File.swift',
-  'GType.swift',
-  'IOStream.swift',
   'Icon+AppKit.swift',
   'Icon+CGImage.swift',
   'Icon+SwiftUI.swift',
   'Icon+UIKit.swift',
   'Icon.swift',
-  'JSON.swift',
-  'MainLoop.swift',
   'Marshal.swift',
   'PortalMembership.swift',
   'PortalService.swift',
@@ -35,9 +30,13 @@ sources = [
   'Session.swift',
   'SignalConnection.swift',
   'SpawnDetails.swift',
-  'TlsCertificate.swift',
-  'UUID.swift',
 ]
+
+subdir('GLib')
+sources += glib_sources
+
+subdir('JSONGLib')
+sources += json_glib_sources
 
 extra_link_args = []
 if host_os_family == 'darwin'

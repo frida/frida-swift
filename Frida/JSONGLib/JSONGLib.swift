@@ -1,6 +1,6 @@
 import Frida_Private
 
-public enum JSON {
+public enum JSONGLib {
     public static func string(from value: Any, pretty: Bool = false) throws -> String {
         let root = try makeNode(from: value)
         defer { json_node_free(root) }

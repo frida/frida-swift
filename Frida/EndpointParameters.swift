@@ -6,10 +6,10 @@ public final class EndpointParameters: @unchecked Sendable, CustomStringConverti
     public convenience init(
         address: String? = nil,
         port: UInt16 = 0,
-        certificate: TlsCertificate? = nil,
+        certificate: GLib.TlsCertificate? = nil,
         origin: String? = nil,
         authService: AuthenticationService? = nil,
-        assetRoot: File? = nil
+        assetRoot: GLib.File? = nil
     ) {
         Runtime.ensureInitialized()
 
@@ -57,11 +57,11 @@ public final class EndpointParameters: @unchecked Sendable, CustomStringConverti
         return Marshal.stringFromCString(raw)
     }
 
-    public var assetRoot: File? {
+    public var assetRoot: GLib.File? {
         get {
             guard let raw = frida_endpoint_parameters_get_asset_root(handle) else { return nil }
             g_object_ref(gpointer(raw))
-            return File(handle: raw)
+            return GLib.File(handle: raw)
         }
         set {
             frida_endpoint_parameters_set_asset_root(handle, newValue?.handle)

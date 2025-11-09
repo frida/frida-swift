@@ -506,10 +506,10 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    public func openChannel(_ address: String) async throws -> IOStream {
-        return try await fridaAsync(IOStream.self) { op in
+    public func openChannel(_ address: String) async throws -> GLib.IOStream {
+        return try await fridaAsync(GLib.IOStream.self) { op in
             frida_device_open_channel(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in
-                let op = InternalOp<IOStream>.takeRetained(from: userData!)
+                let op = InternalOp<GLib.IOStream>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
                 let rawStream = frida_device_open_channel_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
@@ -519,7 +519,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
                     return
                 }
 
-                let stream = IOStream(handle: rawStream!)
+                let stream = GLib.IOStream(handle: rawStream!)
                 op.resumeSuccess(stream)
             }, op.userData)
         }

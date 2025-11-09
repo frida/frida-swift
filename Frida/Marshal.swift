@@ -292,11 +292,11 @@ class Marshal {
     }
 
     static func jsonFromValue(_ value: Any) -> String {
-        return try! JSON.string(from: value)
+        return try! JSONGLib.string(from: value)
     }
 
     static func valueFromJSON(_ json: String) throws -> Any {
-        return try! JSON.value(from: json)
+        return try! JSONGLib.value(from: json)
     }
 
     static func certificateFromString(_ string: String) throws -> UnsafeMutablePointer<GTlsCertificate> {
