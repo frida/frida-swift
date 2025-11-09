@@ -23,7 +23,7 @@ extension GLib {
         }
 
         public var description: String {
-            return "Frida.IOStream()"
+            return "GLib.IOStream()"
         }
 
         public static func == (lhs: IOStream, rhs: IOStream) -> Bool {

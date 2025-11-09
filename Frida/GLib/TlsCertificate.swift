@@ -35,7 +35,7 @@ extension GLib {
         }
 
         public var description: String {
-            "Frida.TlsCertificate()"
+            "GLib.TlsCertificate()"
         }
 
         public static func == (lhs: TlsCertificate, rhs: TlsCertificate) -> Bool {

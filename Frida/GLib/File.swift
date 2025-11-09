@@ -19,7 +19,7 @@ extension GLib {
         }
 
         public var description: String {
-            "Frida.File()"
+            "GLib.File()"
         }
 
         public static func == (lhs: File, rhs: File) -> Bool {

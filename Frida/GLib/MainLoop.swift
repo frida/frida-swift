@@ -13,7 +13,7 @@ extension GLib {
         }
 
         public var description: String {
-            "Frida.MainLoop()"
+            "GLib.MainLoop()"
         }
 
         public func run() {
