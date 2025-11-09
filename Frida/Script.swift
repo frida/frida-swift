@@ -2,14 +2,7 @@ import Frida_Private
 
 public final class Script: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     public var events: Events {
-        if isDestroyed {
-            return Events { continuation in
-                continuation.yield(.destroyed)
-                continuation.finish()
-            }
-        } else {
-            return eventSource.makeStream()
-        }
+        eventSource.makeStream()
     }
 
     public typealias Events = AsyncStream<Event>
@@ -171,8 +164,7 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
                 stackTrace: nil
             ))
 
-            script.publish(.destroyed)
-            script.eventSource.finish()
+            script.eventSource.finish(replayLast: .destroyed)
         }
     }
 

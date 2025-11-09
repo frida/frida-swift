@@ -2,14 +2,7 @@ import Frida_Private
 
 public final class Bus: @unchecked Sendable, Hashable {
     public var events: Events {
-        if isDetached {
-            return Events { continuation in
-                continuation.yield(.detached)
-                continuation.finish()
-            }
-        } else {
-            return eventSource.makeStream()
-        }
+        eventSource.makeStream()
     }
 
     public typealias Events = AsyncStream<Event>
@@ -85,10 +78,7 @@ public final class Bus: @unchecked Sendable, Hashable {
     private let onDetached: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
         let connection = Unmanaged<SignalConnection<Bus>>.fromOpaque(userData).takeUnretainedValue()
 
-        if let bus = connection.instance {
-            bus.publish(.detached)
-            bus.eventSource.finish()
-        }
+        connection.instance?.eventSource.finish(replayLast: .detached)
     }
 
     private let onMessage: @convention(c) (OpaquePointer, UnsafePointer<gchar>, OpaquePointer?, gpointer) -> Void = { _, rawJson, rawBytes, userData in

@@ -2,14 +2,7 @@ import Frida_Private
 
 public final class Device: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable, Identifiable {
     public var events: Events {
-        if isLost {
-            return Events { continuation in
-                continuation.yield(.lost)
-                continuation.finish()
-            }
-        } else {
-            return eventSource.makeStream()
-        }
+        eventSource.makeStream()
     }
 
     public typealias Events = AsyncStream<Event>
@@ -585,10 +578,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
     private let onLost: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
 
-        if let device = connection.instance {
-            device.publish(.lost)
-            device.eventSource.finish()
-        }
+        connection.instance?.eventSource.finish(replayLast: .lost)
     }
 
     private func publish(_ event: Event) {

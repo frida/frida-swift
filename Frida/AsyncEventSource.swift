@@ -4,6 +4,7 @@ public actor AsyncEventSource<Event> {
     private var nextID: Int = 0
     private var continuations: [Int: Stream.Continuation] = [:]
     private var isFinished = false
+    private var terminalEvent: Event? = nil
 
     public init() {}
 
@@ -17,12 +18,15 @@ public actor AsyncEventSource<Event> {
         Task { await self.emit(event) }
     }
 
-    public nonisolated func finish() {
-        Task { await self.finishAll() }
+    public nonisolated func finish(replayLast last: Event? = nil) {
+        Task { await self.finishAll(replayLast: last) }
     }
 
     private func addSubscriber(_ continuation: Stream.Continuation) {
         if isFinished {
+            if let event = terminalEvent {
+                continuation.yield(event)
+            }
             continuation.finish()
             return
         }
@@ -46,22 +50,27 @@ public actor AsyncEventSource<Event> {
             return
         }
 
-        let current = Array(continuations.values)
-        for c in current {
+        let subs = Array(continuations.values)
+        for c in subs {
             c.yield(event)
         }
     }
 
-    private func finishAll() {
+    private func finishAll(replayLast last: Event?) {
         if isFinished {
             return
         }
 
         isFinished = true
-        let current = Array(continuations.values)
+        terminalEvent = last
+
+        let subs = Array(continuations.values)
         continuations.removeAll()
 
-        for c in current {
+        for c in subs {
+            if let event = last {
+                c.yield(event)
+            }
             c.finish()
         }
     }

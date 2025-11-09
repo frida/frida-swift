@@ -2,14 +2,7 @@ import Frida_Private
 
 public final class Session: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     public var events: Events {
-        if isDetached {
-            return Events { continuation in
-                continuation.yield(.detached(reason: .applicationRequested, crash: nil))
-                continuation.finish()
-            }
-        } else {
-            return eventSource.makeStream()
-        }
+        eventSource.makeStream()
     }
 
     public typealias Events = AsyncStream<Event>
@@ -296,12 +289,7 @@ public final class Session: @unchecked Sendable, CustomStringConvertible, Equata
             crash = CrashDetails(handle: rawCrash)
         }
 
-        if let session = connection.instance,
-           let detachReason = SessionDetachReason(rawValue: reason) {
-
-            session.publish(.detached(reason: detachReason, crash: crash))
-            session.eventSource.finish()
-        }
+        connection.instance?.eventSource.finish(replayLast: .detached(reason: SessionDetachReason(rawValue: reason)!, crash: crash))
     }
 
     private func publish(_ event: Event) {
