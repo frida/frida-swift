@@ -4,7 +4,7 @@ extension GLib {
     public final class DateTime: CustomStringConvertible, Equatable, Hashable {
         internal let handle: OpaquePointer
 
-        static func nowUTC() -> DateTime {
+        public static func nowUTC() -> DateTime {
             return DateTime(handle: g_date_time_new_now_utc())
         }
 
