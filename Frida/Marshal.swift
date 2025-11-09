@@ -144,21 +144,6 @@ class Marshal {
         return MarshalNull.shared
     }
 
-    @inlinable
-    public static func stringFromCString(_ cString: UnsafePointer<CChar>) -> String {
-        let length = Int(strlen(cString))
-        if length == 0 {
-            return ""
-        }
-
-        var buffer = [UInt8](repeating: 0, count: length)
-        _ = buffer.withUnsafeMutableBytes { dstBuf in
-            memcpy(dstBuf.baseAddress, cString, length)
-        }
-
-        return String(decoding: buffer, as: UTF8.self)
-    }
-
     private static func stringFromVariant(_ v: OpaquePointer) -> String {
         return String(cString: UnsafeRawPointer(g_variant_get_string(v, nil)!).assumingMemoryBound(to: Int8.self))
     }

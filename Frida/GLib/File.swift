@@ -32,7 +32,7 @@ extension GLib {
 
         public var path: String? {
             guard let raw = g_file_get_path(handle) else { return nil }
-            return Marshal.stringFromCString(raw)
+            return String(cString: raw)
         }
     }
 }

@@ -161,7 +161,7 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
 
         for idx in 0..<Int(length) {
             guard let cstr = rawVector[idx] else { continue }
-            tags.append(Marshal.stringFromCString(cstr))
+            tags.append(String(cString: cstr))
         }
 
         g_strfreev(rawVector)
@@ -193,7 +193,7 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
 
         guard let service = connection.instance else { return }
 
-        let sessionInfo = Marshal.stringFromCString(rawSessionInfo)
+        let sessionInfo = String(cString: rawSessionInfo)
         service.publish(.authenticated(connectionId: ConnectionID(rawConnectionId),
                                        sessionInfo: sessionInfo))
     }
@@ -223,7 +223,7 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
 
         guard let service = connection.instance else { return }
 
-        let jsonString = Marshal.stringFromCString(rawJson)
+        let jsonString = String(cString: rawJson)
         guard let parsedAny = try? Marshal.valueFromJSON(jsonString) else { return }
         let dataBytes = Marshal.arrayFromBytes(rawData)
 

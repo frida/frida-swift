@@ -130,7 +130,7 @@ public final class CustomAuthenticationService: @unchecked Sendable, Authenticat
     ) -> Void = { selfPtr, rawToken, cancellable, callback, userData in
         let box = CustomAuthenticationService.getBox(from: selfPtr!)!
 
-        let token: String = rawToken.map { Marshal.stringFromCString($0) } ?? ""
+        let token: String = rawToken.map { String(cString: $0) } ?? ""
 
         guard let task = g_task_new(
             UnsafeMutableRawPointer(selfPtr),

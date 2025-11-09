@@ -7,7 +7,7 @@ public enum JSONGLib {
 
         let raw = json_to_string(root, pretty ? 1 : 0)!
 
-        let result = Marshal.stringFromCString(raw)
+        let result = String(cString: raw)
         g_free(raw)
         return result
     }
@@ -158,7 +158,7 @@ public enum JSONGLib {
         var iter = members
         while let cur = iter {
             let keyPtr = cur.pointee.data.assumingMemoryBound(to: CChar.self)
-            result[Marshal.stringFromCString(keyPtr)] = decode(json_object_get_member(obj, keyPtr))
+            result[String(cString: keyPtr)] = decode(json_object_get_member(obj, keyPtr))
             iter = cur.pointee.next
         }
         return result
@@ -193,7 +193,7 @@ public enum JSONGLib {
         case GType.double:
             return json_node_get_double(node)
         case GType.string:
-            return Marshal.stringFromCString(json_node_get_string(node))
+            return String(cString: json_node_get_string(node))
         default:
             fatalError("Invalid value type")
         }

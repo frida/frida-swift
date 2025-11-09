@@ -43,7 +43,7 @@ extension GLib {
             defer {
                 g_free(raw)
             }
-            return Marshal.stringFromCString(raw)
+            return String(cString: raw)
         }
     }
 }

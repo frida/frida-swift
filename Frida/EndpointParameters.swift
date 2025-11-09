@@ -45,7 +45,7 @@ public final class EndpointParameters: @unchecked Sendable, CustomStringConverti
 
     public var address: String? {
         guard let raw = frida_endpoint_parameters_get_address(handle) else { return nil }
-        return Marshal.stringFromCString(raw)
+        return String(cString: raw)
     }
 
     public var port: UInt16 {
@@ -54,7 +54,7 @@ public final class EndpointParameters: @unchecked Sendable, CustomStringConverti
 
     public var origin: String? {
         guard let raw = frida_endpoint_parameters_get_origin(handle) else { return nil }
-        return Marshal.stringFromCString(raw)
+        return String(cString: raw)
     }
 
     public var assetRoot: GLib.File? {
