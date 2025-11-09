@@ -82,9 +82,9 @@ public final class DeviceManager: @unchecked Sendable {
 
         g_object_ref(gpointer(options))
 
-        let newDevice = try await fridaAsync(Device.self) { op in
+        let handle = try await fridaAsync(OpaquePointer.self) { op in
             frida_device_manager_add_remote_device(self.handle, address, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
-                    let op = InternalOp<Device>.takeRetained(from: userData!)
+                    let op = InternalOp<OpaquePointer>.takeRetained(from: userData!)
 
                     var rawError: UnsafeMutablePointer<GError>? = nil
                     let rawDeviceHandle = frida_device_manager_add_remote_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
@@ -94,8 +94,7 @@ public final class DeviceManager: @unchecked Sendable {
                         return
                     }
 
-                    let device = Device(handle: rawDeviceHandle!)
-                    op.resumeSuccess(device)
+                    op.resumeSuccess(rawDeviceHandle!)
                 },
                 op.userData
             )
@@ -103,7 +102,7 @@ public final class DeviceManager: @unchecked Sendable {
             g_object_unref(gpointer(options))
         }
 
-        return newDevice
+        return await store.deviceForHandle(handle)
     }
 
     public func removeRemoteDevice(address: String) async throws {
@@ -164,29 +163,19 @@ public final class DeviceManager: @unchecked Sendable {
         }
     }
 
-    private let onAdded: @convention(c) (OpaquePointer?, OpaquePointer?, gpointer?) -> Void = { _, rawDevice, userData in
-        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData!).takeUnretainedValue()
-
-        guard let manager = connection.instance, let rawDevice = rawDevice else { return }
-
-        g_object_ref(gpointer(rawDevice))
-        let device = Device(handle: rawDevice)
+    private let onAdded: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawDevice, userData in
+        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
 
         Task {
-            await manager.store.handleAdded(device)
+            _ = await connection.instance?.store.deviceAppeared(with: rawDevice)
         }
     }
 
-    private let onRemoved: @convention(c) (OpaquePointer?, OpaquePointer?, gpointer?) -> Void = { _, rawDevice, userData in
-        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData!).takeUnretainedValue()
-
-        guard let manager = connection.instance, let rawDevice = rawDevice else { return }
-
-        g_object_ref(gpointer(rawDevice))
-        let device = Device(handle: rawDevice)
+    private let onRemoved: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, rawDevice, userData in
+        let connection = Unmanaged<SignalConnection<DeviceManager>>.fromOpaque(userData).takeUnretainedValue()
 
         Task {
-            await manager.store.handleRemoved(device)
+            await connection.instance?.store.deviceDisappeared(with: rawDevice)
         }
     }
 }
@@ -195,19 +184,50 @@ actor DeviceStore {
     private var devices: [Device] = []
     private let events = AsyncEventSource<[Device]>()
 
+    private var waiters: [OpaquePointer: [CheckedContinuation<Device, Never>]] = [:]
+
     func handleInitialSnapshot(_ devices: [Device]) {
         self.devices = devices
         events.yield(self.devices)
     }
 
-    func handleAdded(_ device: Device) {
+    func deviceAppeared(with handle: OpaquePointer) -> Device {
+        if let existing = devices.first(where: { $0.handle == handle }) {
+            if let continuations = waiters.removeValue(forKey: handle) {
+                for c in continuations {
+                    c.resume(returning: existing)
+                }
+            }
+            return existing
+        }
+
+        g_object_ref(gpointer(handle))
+        let device = Device(handle: handle)
         devices.append(device)
+        events.yield(devices)
+
+        if let continuations = waiters.removeValue(forKey: handle) {
+            for c in continuations {
+                c.resume(returning: device)
+            }
+        }
+
+        return device
+    }
+
+    func deviceDisappeared(with handle: OpaquePointer) {
+        devices.removeAll { $0.handle == handle }
         events.yield(devices)
     }
 
-    func handleRemoved(_ device: Device) {
-        devices.removeAll { $0 == device }
-        events.yield(devices)
+    func deviceForHandle(_ handle: OpaquePointer) async -> Device {
+        if let existing = devices.first(where: { $0.handle == handle }) {
+            return existing
+        }
+
+        return await withCheckedContinuation { continuation in
+            waiters[handle, default: []].append(continuation)
+        }
     }
 
     func snapshot() -> [Device] {

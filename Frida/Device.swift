@@ -34,7 +34,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    private let handle: OpaquePointer
+    internal let handle: OpaquePointer
     private let eventSource = AsyncEventSource<Event>()
 
     public let icon: Icon?
