@@ -1,3 +1,4 @@
+#if canImport(Combine)
 import Combine
 
 @MainActor
@@ -26,3 +27,5 @@ public final class DeviceListModel: ObservableObject {
         }
     }
 }
+
+#endif
