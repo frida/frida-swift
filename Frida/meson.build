@@ -39,10 +39,13 @@ subdir('JSONGLib')
 sources += json_glib_sources
 
 extra_link_args = []
+extra_link_depends = []
 if host_os_family == 'darwin'
   extra_link_args += ['-Xlinker', '-exported_symbol', '-Xlinker', '_$*']
 elif cc.get_argument_syntax() != 'msvc'
-  extra_link_args += ['-Xlinker', '-export-symbols-regex', '-Xlinker', '^_\\$.+']
+  symscript = 'Frida.version'
+  extra_link_args += ['-Xlinker', '--version-script', '-Xlinker', meson.current_source_dir() / symscript]
+  extra_link_depends += symscript
 endif
 
 frida_incdirs = include_directories('.')
@@ -55,6 +58,7 @@ frida_lib = shared_library('Frida', sources,
     '-emit-module-interface',
   ],
   link_args: extra_link_args,
+  link_depends: extra_link_depends,
   dependencies: frida_private_dep,
   install: host_os_family != 'darwin',
 )
