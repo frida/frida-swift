@@ -104,7 +104,7 @@ extension GLib {
                         let length = Int(bytesRead)
                         var result = [UInt8](repeating: 0, count: length)
                         _ = result.withUnsafeMutableBytes { dstBuf in
-                            memcpy(dstBuf.baseAddress, buffer, length)
+                            memcpy(dstBuf.baseAddress!, buffer, length)
                         }
 
                         op.resumeSuccess(result)
@@ -144,7 +144,7 @@ extension GLib {
                 let byteCount = data.count
                 let buffer = g_malloc(gsize(byteCount))!
                 _ = data.withUnsafeBytes { srcBuf in
-                    memcpy(buffer, srcBuf.baseAddress, byteCount)
+                    memcpy(buffer, srcBuf.baseAddress!, byteCount)
                 }
 
                 op.payload = buffer

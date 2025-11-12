@@ -95,12 +95,12 @@ class Marshal {
 
         if g_variant_is_of_type(v, gvariantByteArrayType) != 0 {
             var count: gsize = 0
-            let basePtr = g_variant_get_fixed_array(v, &count, 1)
+            let basePtr = g_variant_get_fixed_array(v, &count, 1)!
 
             let length = Int(count)
             var bytes = [UInt8](repeating: 0, count: length)
             _ = bytes.withUnsafeMutableBytes { dst in
-                memcpy(dst.baseAddress, basePtr, length)
+                memcpy(dst.baseAddress!, basePtr, length)
             }
             return bytes
         }
@@ -270,7 +270,7 @@ class Marshal {
         var result = [UInt8](repeating: 0, count: count)
 
         _ = result.withUnsafeMutableBytes { dstBuf in
-            memcpy(dstBuf.baseAddress, rawPtr, count)
+            memcpy(dstBuf.baseAddress!, rawPtr, count)
         }
 
         return result
