@@ -45,8 +45,10 @@ elif cc.get_argument_syntax() != 'msvc'
   extra_link_args += ['-Xlinker', '-export-symbols-regex', '-Xlinker', '^_\\$.+']
 endif
 
+frida_incdirs = include_directories('.')
+
 frida_lib = shared_library('Frida', sources,
-  include_directories: include_directories('.'),
+  include_directories: frida_incdirs,
   swift_args: [
     '-swift-version', '5',
     '-enable-library-evolution',
@@ -56,6 +58,13 @@ frida_lib = shared_library('Frida', sources,
   dependencies: frida_private_dep,
   install: host_os_family != 'darwin',
 )
+
+frida_dep = declare_dependency(
+  include_directories: frida_incdirs,
+  link_with: frida_lib,
+)
+
+meson.override_dependency('frida-swift', frida_dep)
 
 if host_os_family == 'darwin'
   custom_target('frida-framework',
