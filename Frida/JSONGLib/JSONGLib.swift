@@ -110,7 +110,7 @@ public enum JSONGLib {
 
     private static func makeIntNode(_ value: Int64) -> OpaquePointer {
         let node = json_node_new(JSON_NODE_VALUE)!
-        json_node_set_int(node, value)
+        json_node_set_int(node, gint64(value))
         return node
     }
 
