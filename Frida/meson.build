@@ -19,6 +19,7 @@ sources = [
   'Icon+SwiftUI.swift',
   'Icon+UIKit.swift',
   'Icon.swift',
+  'JSValue.swift',
   'Marshal.swift',
   'PortalMembership.swift',
   'PortalService.swift',

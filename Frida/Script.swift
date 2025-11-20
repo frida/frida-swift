@@ -205,7 +205,7 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
                     cont(.success(value: db))
                 }
             } else {
-                let valuePart: Any? = (payload.count >= 4) ? payload[3] : nil
+                let valuePart: Any = (payload.count >= 4) ? payload[3] : JSONNull.null
                 cont(.success(value: valuePart))
             }
         } else {
@@ -232,8 +232,8 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    internal func rpcCall(functionName: String, args: [Any]) async throws -> Any? {
-        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Any?, Swift.Error>) in
+    internal func rpcCall(functionName: String, args: [Any]) async throws -> Any {
+        try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Any, Swift.Error>) in
             Runtime.scheduleOnFridaThread { [weak self] in
                 guard let self else {
                     cont.resume(throwing: Error.rpcError(
@@ -326,7 +326,7 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
     }
 
     internal enum RpcInternalResult {
-        case success(value: Any?)
+        case success(value: Any)
         case error(Swift.Error)
     }
 }
