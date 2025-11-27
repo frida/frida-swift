@@ -200,6 +200,15 @@ public enum JSONGLib {
     }
 }
 
+#if canImport(Foundation)
+import Foundation
+
+public typealias JSONNull = NSNull
+
+public extension JSONNull {
+    static var null: JSONNull { JSONNull() }
+}
+#else
 public enum JSONNull: CustomStringConvertible, Equatable, Hashable {
     case null
 
@@ -207,3 +216,4 @@ public enum JSONNull: CustomStringConvertible, Equatable, Hashable {
         "null"
     }
 }
+#endif
