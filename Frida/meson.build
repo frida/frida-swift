@@ -14,6 +14,7 @@ sources = [
   'DeviceManager.swift',
   'EndpointParameters.swift',
   'Error.swift',
+  'Error+Foundation.swift',
   'Icon+AppKit.swift',
   'Icon+CGImage.swift',
   'Icon+SwiftUI.swift',
