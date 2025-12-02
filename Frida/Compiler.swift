@@ -163,7 +163,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var outputFormat: OutputFormat {
         get {
-            return OutputFormat(rawValue: frida_compiler_options_get_output_format(handle).rawValue)!
+            OutputFormat(rawValue: frida_compiler_options_get_output_format(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_output_format(handle, FridaOutputFormat(rawValue: newValue.rawValue))
@@ -172,7 +172,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var bundleFormat: BundleFormat {
         get {
-            return BundleFormat(rawValue: frida_compiler_options_get_bundle_format(handle).rawValue)!
+            BundleFormat(rawValue: frida_compiler_options_get_bundle_format(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_bundle_format(handle, FridaBundleFormat(rawValue: newValue.rawValue))
@@ -181,7 +181,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var typeCheck: TypeCheckMode {
         get {
-            return TypeCheckMode(rawValue: frida_compiler_options_get_type_check(handle).rawValue)!
+            TypeCheckMode(rawValue: frida_compiler_options_get_type_check(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_type_check(handle, FridaTypeCheckMode(rawValue: newValue.rawValue))
@@ -190,7 +190,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var sourceMaps: SourceMaps {
         get {
-            return SourceMaps(rawValue: frida_compiler_options_get_source_maps(handle).rawValue)!
+            SourceMaps(rawValue: frida_compiler_options_get_source_maps(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_source_maps(handle, FridaSourceMaps(rawValue: newValue.rawValue))
@@ -199,7 +199,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var compression: JsCompression {
         get {
-            return JsCompression(rawValue: frida_compiler_options_get_compression(handle).rawValue)!
+            JsCompression(rawValue: frida_compiler_options_get_compression(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_compression(handle, FridaJsCompression(rawValue: newValue.rawValue))
@@ -208,7 +208,7 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var platform: JsPlatform {
         get {
-            return JsPlatform(rawValue: frida_compiler_options_get_platform(handle).rawValue)!
+            JsPlatform(rawValue: frida_compiler_options_get_platform(handle).rawValue)!
         }
         set {
             frida_compiler_options_set_platform(handle, FridaJsPlatform(rawValue: newValue.rawValue))
