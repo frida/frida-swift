@@ -7,6 +7,7 @@ sources = [
   'AuthenticationService.swift',
   'Bus.swift',
   'ChildDetails.swift',
+  'Compiler.swift',
   'CrashDetails.swift',
   'CustomAuthenticationService.swift',
   'Device.swift',

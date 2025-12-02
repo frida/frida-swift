@@ -24,7 +24,6 @@ cc = meson.get_compiler('c')
 
 frida_core_dep = dependency('frida-core-1.0', default_options: [
   'frida_version=' + meson.project_version(),
-  'compiler_backend=disabled',
 ])
 
 python = import('python').find_installation()
