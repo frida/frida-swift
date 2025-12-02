@@ -23,6 +23,7 @@ sources = [
   'Icon.swift',
   'JSValue.swift',
   'Marshal.swift',
+  'PackageManager.swift',
   'PortalMembership.swift',
   'PortalService.swift',
   'ProcessDetails.swift',
