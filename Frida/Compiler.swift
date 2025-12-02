@@ -130,12 +130,16 @@ public final class Compiler: @unchecked Sendable, CustomStringConvertible, Equat
 
 public final class BuildOptions: CompilerOptions, @unchecked Sendable {
     public init() {
+        Runtime.ensureInitialized()
+
         super.init(handle: frida_build_options_new()!)
     }
 }
 
 public final class WatchOptions: CompilerOptions, @unchecked Sendable {
     public init() {
+        Runtime.ensureInitialized()
+
         super.init(handle: frida_watch_options_new()!)
     }
 }
