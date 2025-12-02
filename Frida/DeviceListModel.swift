@@ -14,10 +14,14 @@ public final class DeviceListModel: ObservableObject {
 
     public let manager: DeviceManager
 
+    private var discoveryTask: Task<Void, Never>!
+
     public init(manager: DeviceManager) {
         self.manager = manager
 
-        Task {
+        discoveryTask = Task { [weak self] in
+            guard let self else { return }
+
             self.devices = await manager.currentDevices()
             self.discoveryState = .ready
 
@@ -25,6 +29,10 @@ public final class DeviceListModel: ObservableObject {
                 self.devices = snapshot
             }
         }
+    }
+
+    deinit {
+        discoveryTask.cancel()
     }
 }
 
