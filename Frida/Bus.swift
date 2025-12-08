@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class Bus: @unchecked Sendable, Hashable {
     public var events: Events {

@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class EndpointParameters: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     internal let handle: OpaquePointer

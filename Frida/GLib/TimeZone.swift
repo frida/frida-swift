@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 extension GLib {
     public final class TimeZone: CustomStringConvertible, Equatable, Hashable {

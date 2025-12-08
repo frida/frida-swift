@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 class Marshal {
     private static let gvariantStringType = g_variant_type_new("s")

@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 func fridaAsync<Result>(
     _ resultType: Result.Type,

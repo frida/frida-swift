@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 @discardableResult
 func connectSignal<Handler>(

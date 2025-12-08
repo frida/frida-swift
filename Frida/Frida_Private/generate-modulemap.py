@@ -7,7 +7,7 @@ def main(argv: list[str]):
     core_header = argv[2]
 
     modulemap.write_text("\n".join([
-                             "module Frida_Private [extern_c] {",
+                             "module FridaCore [extern_c] {",
                              f'  header "{core_header}"',
                              "  export *",
                              "}",

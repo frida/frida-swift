@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public enum JSONGLib {
     public static func string(from value: Any, pretty: Bool = false) throws -> String {

@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class PortalMembership: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer

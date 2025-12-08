@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public protocol AuthenticationDelegate: AnyObject {
     func authenticate(token: String) async throws -> String

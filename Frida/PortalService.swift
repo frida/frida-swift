@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class PortalService: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     public var events: Events {

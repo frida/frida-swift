@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class Compiler: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     public var events: Events {

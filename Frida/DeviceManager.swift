@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class DeviceManager: @unchecked Sendable {
     private let handle: OpaquePointer

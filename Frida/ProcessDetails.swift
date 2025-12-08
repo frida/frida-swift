@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class ProcessDetails: CustomStringConvertible, Equatable, Hashable, Identifiable {
     private let handle: OpaquePointer

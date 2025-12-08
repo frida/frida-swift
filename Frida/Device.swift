@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class Device: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable, Identifiable {
     public var events: Events {

@@ -1,4 +1,4 @@
-import Frida_Private
+import FridaCore
 
 public final class SpawnDetails: CustomStringConvertible, Equatable, Hashable {
     private let handle: OpaquePointer
