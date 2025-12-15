@@ -31,6 +31,8 @@ let package = Package(
                 "Info.plist",
                 "generate-framework.py",
                 "meson.build",
+                "GLib/meson.build",
+                "JSONGLib/meson.build",
             ],
             linkerSettings: [
                 .linkedLibrary("resolv", .when(platforms: [.macOS, .iOS])),
