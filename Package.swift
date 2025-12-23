@@ -5,7 +5,7 @@ let package = Package(
     name: "FridaSwift",
     platforms: [
         .macOS(.v11),
-        .iOS(.v12),
+        .iOS(.v13),
     ],
     products: [
         .library(
