@@ -1,13 +1,8 @@
 import FridaCore
 
 class Marshal {
-    private static let gvariantStringType = g_variant_type_new("s")
-    private static let gvariantInt64Type = g_variant_type_new("x")
-    private static let gvariantBooleanType = g_variant_type_new("b")
-    private static let gvariantVariantType = g_variant_type_new("v")
     private static let gvariantByteArrayType = g_variant_type_new("ay")
     private static let gvariantVarDictType = g_variant_type_new("a{sv}")
-    private static let gvariantArrayType = g_variant_type_new("a*")
 
     static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Swift.Error {
         let domain = error.pointee.domain
@@ -77,75 +72,111 @@ class Marshal {
     }
 
     static func valueFromVariant(_ v: OpaquePointer) -> Any {
-        if g_variant_is_of_type(v, gvariantStringType) != 0 {
+        switch g_variant_classify(v) {
+        case G_VARIANT_CLASS_STRING:
             return stringFromVariant(v)
-        }
-
-        if g_variant_is_of_type(v, gvariantInt64Type) != 0 {
+        case G_VARIANT_CLASS_BYTE:
+            return UInt8(g_variant_get_byte(v))
+        case G_VARIANT_CLASS_INT16:
+            return Int16(g_variant_get_int16(v))
+        case G_VARIANT_CLASS_UINT16:
+            return UInt16(g_variant_get_uint16(v))
+        case G_VARIANT_CLASS_INT32:
+            return Int32(g_variant_get_int32(v))
+        case G_VARIANT_CLASS_UINT32:
+            return UInt32(g_variant_get_uint32(v))
+        case G_VARIANT_CLASS_INT64:
             return Int64(g_variant_get_int64(v))
-        }
-
-        if g_variant_is_of_type(v, gvariantBooleanType) != 0 {
+        case G_VARIANT_CLASS_UINT64:
+            return UInt64(g_variant_get_uint64(v))
+        case G_VARIANT_CLASS_DOUBLE:
+            return Double(g_variant_get_double(v))
+        case G_VARIANT_CLASS_BOOLEAN:
             return g_variant_get_boolean(v) != 0
-        }
-
-        if g_variant_is_of_type(v, gvariantVariantType) != 0 {
-            return valueFromVariant(g_variant_get_variant(v))
-        }
-
-        if g_variant_is_of_type(v, gvariantByteArrayType) != 0 {
-            var count: gsize = 0
-            let basePtr = g_variant_get_fixed_array(v, &count, 1)!
-
-            let length = Int(count)
-            var bytes = [UInt8](repeating: 0, count: length)
-            _ = bytes.withUnsafeMutableBytes { dst in
-                memcpy(dst.baseAddress!, basePtr, length)
+        case G_VARIANT_CLASS_ARRAY:
+            if g_variant_is_of_type(v, gvariantByteArrayType) != 0 {
+                return byteArrayFromVariant(v)
             }
-            return bytes
-        }
-
-        if g_variant_is_of_type(v, gvariantVarDictType) != 0 {
-            var result: [String: Any] = [:]
-
-            var iter = GVariantIter()
-            g_variant_iter_init(&iter, v)
-
-            while let entry = g_variant_iter_next_value(&iter) {
-                let rawKey = g_variant_get_child_value(entry, 0)!;
-                let rawValue = g_variant_get_child_value(entry, 1)!;
-
-                let key = stringFromVariant(rawKey)
-                let value = valueFromVariant(rawValue)
-                result[key] = value
-
-                g_variant_unref(rawValue)
-                g_variant_unref(rawKey)
-                g_variant_unref(entry)
+            if g_variant_is_of_type(v, gvariantVarDictType) != 0 {
+                return dictFromVariant(v)
             }
-
+            return arrayFromVariant(v)
+        case G_VARIANT_CLASS_TUPLE:
+            return tupleFromVariant(v)
+        case G_VARIANT_CLASS_VARIANT:
+            let inner = g_variant_get_variant(v)!
+            let result = valueFromVariant(inner)
+            g_variant_unref(inner)
             return result
+        default:
+            return MarshalNull.shared
         }
-
-        if g_variant_is_of_type(v, gvariantArrayType) != 0 {
-            var result: [Any] = []
-
-            var iter = GVariantIter()
-            g_variant_iter_init(&iter, v)
-
-            while let child = g_variant_iter_next_value(&iter) {
-                result.append(valueFromVariant(child))
-                g_variant_unref(child)
-            }
-
-            return result
-        }
-
-        return MarshalNull.shared
     }
 
     private static func stringFromVariant(_ v: OpaquePointer) -> String {
         return String(cString: UnsafeRawPointer(g_variant_get_string(v, nil)!).assumingMemoryBound(to: Int8.self))
+    }
+
+    private static func byteArrayFromVariant(_ v: OpaquePointer) -> [UInt8] {
+        var count: gsize = 0
+        let basePtr = g_variant_get_fixed_array(v, &count, 1)!
+
+        let length = Int(count)
+        var bytes = [UInt8](repeating: 0, count: length)
+        _ = bytes.withUnsafeMutableBytes { dst in
+            memcpy(dst.baseAddress!, basePtr, length)
+        }
+        return bytes
+    }
+
+    private static func dictFromVariant(_ v: OpaquePointer) -> [String: Any] {
+        var result: [String: Any] = [:]
+
+        var iter = GVariantIter()
+        g_variant_iter_init(&iter, v)
+
+        while let entry = g_variant_iter_next_value(&iter) {
+            let rawKey = g_variant_get_child_value(entry, 0)!
+            let rawValue = g_variant_get_child_value(entry, 1)!
+
+            let key = stringFromVariant(rawKey)
+            let value = valueFromVariant(rawValue)
+            result[key] = value
+
+            g_variant_unref(rawValue)
+            g_variant_unref(rawKey)
+            g_variant_unref(entry)
+        }
+
+        return result
+    }
+
+    private static func arrayFromVariant(_ v: OpaquePointer) -> [Any] {
+        var result: [Any] = []
+
+        var iter = GVariantIter()
+        g_variant_iter_init(&iter, v)
+
+        while let child = g_variant_iter_next_value(&iter) {
+            result.append(valueFromVariant(child))
+            g_variant_unref(child)
+        }
+
+        return result
+    }
+
+    private static func tupleFromVariant(_ v: OpaquePointer) -> [Any] {
+        let n = g_variant_n_children(v)
+        var result: [Any] = []
+        result.reserveCapacity(Int(n))
+
+        for i in 0..<n {
+            let child = g_variant_get_child_value(v, i)!
+            result.append(valueFromVariant(child))
+            g_variant_unref(child)
+        }
+
+        return result
     }
 
     static func iconFromVarDict(_ dict: [String: Any]) -> Icon {
