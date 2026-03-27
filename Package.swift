@@ -16,8 +16,8 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "FridaCore",
-            url: "https://github.com/frida/frida-core/releases/download/17.5.2/FridaCore.xcframework.zip",
-            checksum: "1edfa0771080223931e5d745de1725be5b9e27cc6381979c47aac5f65358a79e"
+            url: "https://github.com/frida/frida-core/releases/download/17.9.1/FridaCore.xcframework.zip",
+            checksum: "5df0ba31fb97765b2a4d391a3fa062a6b7657a92518aa0109ca7fc232ba8f7e5"
         ),
         .target(
             name: "Frida",
