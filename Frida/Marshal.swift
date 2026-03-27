@@ -185,8 +185,8 @@ class Marshal {
 
         switch formatString {
         case "rgba":
-            let w = dict["width"] as! Int64
-            let h = dict["height"] as! Int64
+            let w = dict["width"] as! UInt16
+            let h = dict["height"] as! UInt16
 
             return .rgba(
                 width: Int(w),
