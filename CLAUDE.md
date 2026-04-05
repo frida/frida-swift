@@ -27,11 +27,18 @@ make install
 ./configure --host=android-arm64
 ```
 
-The Makefile delegates to `releng/meson_make.py`. There is no
-test suite in this repository.
+The Makefile delegates to `releng/meson_make.py`.
 
-Swift Package Manager is also supported via `Package.swift`
-(pulls FridaCore as a binary XCFramework from GitHub releases).
+Swift Package Manager is also supported via `Package.swift`.
+On Apple platforms it pulls FridaCore as a binary XCFramework
+from GitHub releases. On non-Apple platforms (Linux, etc.) it
+uses the system-installed Frida via
+`pkg-config frida-core-1.0`.
+
+```bash
+# Run tests (requires Frida available on the system)
+swift test
+```
 
 ## Architecture
 
@@ -81,13 +88,15 @@ wrapping GObject handles:
   `deinit` for proper lifecycle management
 - Errors are mapped through `Marshal.throwIfError` converting
   GError to the Swift `Error` enum (14 cases)
-- Platform support: macOS 11.0+, iOS 13.0+; min Swift tools
-  version 5.9
+- Platform support: macOS 11.0+, iOS 13.0+, Linux; min Swift
+  tools version 5.9
 
 ## Dependencies
 
-- **FridaCore**: Binary dependency — XCFramework from
-  frida-core GitHub releases (version in `Package.swift`)
+- **FridaCore**: On Apple platforms, binary XCFramework from
+  frida-core GitHub releases (version in `Package.swift`).
+  On non-Apple platforms, system library via pkg-config
+  (`frida-core-1.0`)
 - **Build deps**: Defined in `deps.toml` with exact version
   pins (GLib, libffi, pcre2, zlib, etc.)
 - **Build infra**: `releng/` git submodule contains Meson

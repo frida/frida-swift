@@ -10,6 +10,8 @@ toolkit.
 
 ## 🧩 Install
 
+### Apple platforms (macOS, iOS)
+
 Build and install the framework locally:
 
 ```bash
@@ -31,6 +33,17 @@ Then either:
   ```bash
   ./configure --prefix=/your/installation/prefix
   ```
+
+### Linux (and other non-Apple platforms)
+
+Install Frida as a system library so it's available via `pkg-config`:
+
+```bash
+pkg-config --cflags --libs frida-core-1.0
+```
+
+Then add the Swift package dependency as usual — `Package.swift` will
+automatically use the system library instead of the binary xcframework.
 
 ---
 
