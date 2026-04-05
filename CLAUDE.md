@@ -103,3 +103,9 @@ wrapping GObject handles:
   integration, machine specs, and dependency management
 - **Subprojects**: `frida-core` and `frida-gum` as Meson
   subprojects
+
+## Commit Style
+
+- Subject line: max 50 characters
+- Body lines: wrap at 72 characters (use the full width, or
+  slightly less if it avoids making the next line awkward)
