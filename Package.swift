@@ -19,10 +19,15 @@ let package = Package(
             url: "https://github.com/frida/frida-core/releases/download/17.9.1/FridaCore.xcframework.zip",
             checksum: "5df0ba31fb97765b2a4d391a3fa062a6b7657a92518aa0109ca7fc232ba8f7e5"
         ),
+        .systemLibrary(
+            name: "CFridaCore",
+            pkgConfig: "frida-core-1.0"
+        ),
         .target(
             name: "Frida",
             dependencies: [
-                "FridaCore",
+                .target(name: "FridaCore", condition: .when(platforms: [.macOS, .iOS])),
+                .target(name: "CFridaCore", condition: .when(platforms: [.linux])),
             ],
             path: "Frida",
             exclude: [
@@ -36,7 +41,7 @@ let package = Package(
             ],
             linkerSettings: [
                 .linkedLibrary("resolv", .when(platforms: [.macOS, .iOS])),
-            ],
-        )
+            ]
+        ),
     ]
 )
