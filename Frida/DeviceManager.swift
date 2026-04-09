@@ -5,6 +5,12 @@ public final class DeviceManager: @unchecked Sendable {
     private let store = DeviceStore()
 
     public typealias DeviceSnapshots = AsyncStream<[Device]>
+    public typealias DeviceChanges = AsyncStream<DeviceChange>
+
+    public enum DeviceChange: Sendable {
+        case appeared(Device)
+        case disappeared(Device)
+    }
 
     public init() {
         Runtime.ensureInitialized()
@@ -29,6 +35,10 @@ public final class DeviceManager: @unchecked Sendable {
 
     public func snapshots() async -> DeviceSnapshots {
         await store.stream()
+    }
+
+    public func changes() async -> DeviceChanges {
+        await store.changeStream()
     }
 
     public func close() async throws {
@@ -183,6 +193,7 @@ public final class DeviceManager: @unchecked Sendable {
 actor DeviceStore {
     private var devices: [Device] = []
     private let events = AsyncEventSource<[Device]>()
+    private let changeEvents = AsyncEventSource<DeviceManager.DeviceChange>()
 
     private var waiters: [OpaquePointer: [CheckedContinuation<Device, Never>]] = [:]
 
@@ -205,6 +216,7 @@ actor DeviceStore {
         let device = Device(handle: handle)
         devices.append(device)
         events.yield(devices)
+        changeEvents.yield(.appeared(device))
 
         if let continuations = waiters.removeValue(forKey: handle) {
             for c in continuations {
@@ -216,8 +228,10 @@ actor DeviceStore {
     }
 
     func deviceDisappeared(with handle: OpaquePointer) {
+        guard let device = devices.first(where: { $0.handle == handle }) else { return }
         devices.removeAll { $0.handle == handle }
         events.yield(devices)
+        changeEvents.yield(.disappeared(device))
     }
 
     func deviceForHandle(_ handle: OpaquePointer) async -> Device {
@@ -238,7 +252,12 @@ actor DeviceStore {
         events.makeStream()
     }
 
+    func changeStream() -> AsyncStream<DeviceManager.DeviceChange> {
+        changeEvents.makeStream()
+    }
+
     func finish() {
         events.finish()
+        changeEvents.finish()
     }
 }
