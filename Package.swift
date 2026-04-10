@@ -1,14 +1,24 @@
 // swift-tools-version: 5.9
+import Foundation
 import PackageDescription
 
+let fridaCoreTarget: Target
 #if canImport(Darwin)
-let fridaCoreTarget: Target = .binaryTarget(
-    name: "FridaCore",
-    url: "https://github.com/frida/frida-core/releases/download/17.9.1/FridaCore.xcframework.zip",
-    checksum: "5df0ba31fb97765b2a4d391a3fa062a6b7657a92518aa0109ca7fc232ba8f7e5"
-)
+if ProcessInfo.processInfo.environment["USE_SYSTEM_FRIDA"] != nil {
+    fridaCoreTarget = .systemLibrary(
+        name: "FridaCore",
+        path: "FridaCore",
+        pkgConfig: "frida-core-1.0"
+    )
+} else {
+    fridaCoreTarget = .binaryTarget(
+        name: "FridaCore",
+        url: "https://github.com/frida/frida-core/releases/download/17.9.1/FridaCore.xcframework.zip",
+        checksum: "5df0ba31fb97765b2a4d391a3fa062a6b7657a92518aa0109ca7fc232ba8f7e5"
+    )
+}
 #else
-let fridaCoreTarget: Target = .systemLibrary(
+fridaCoreTarget = .systemLibrary(
     name: "FridaCore",
     path: "FridaCore",
     pkgConfig: "frida-core-1.0"
