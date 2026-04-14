@@ -58,7 +58,7 @@ extension GLib {
             try await fridaAsync([UInt8].self) { op in
                 let userData = op.userData
 
-                g_input_stream_read_bytes_async(self.input, count, self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                g_input_stream_read_bytes_async(self.input, numericCast(count), self.ioPriority, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
                     let op = InternalOp<[UInt8]>.takeRetained(from: userDataPtr!)
 
                     var rawError: UnsafeMutablePointer<GError>? = nil
@@ -79,11 +79,11 @@ extension GLib {
 
         public func readAll(_ count: UInt) async throws -> [UInt8] {
             try await fridaAsync([UInt8].self) { op in
-                let buffer = g_malloc(count)!
+                let buffer = g_malloc(numericCast(count))!
                 op.payload = buffer
                 let userData = op.userData
 
-                g_input_stream_read_all_async(self.input, buffer, count, self.ioPriority, op.cancellable,
+                g_input_stream_read_all_async(self.input, buffer, numericCast(count), self.ioPriority, op.cancellable,
                     { sourcePtr, asyncResultPtr, userDataPtr in
                         let op = InternalOp<[UInt8]>.takeRetained(from: userDataPtr!)
 

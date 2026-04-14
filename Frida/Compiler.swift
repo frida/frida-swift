@@ -167,55 +167,55 @@ public class CompilerOptions: @unchecked Sendable {
 
     public var outputFormat: OutputFormat {
         get {
-            OutputFormat(rawValue: frida_compiler_options_get_output_format(handle).rawValue)!
+            OutputFormat(rawValue: numericCast(frida_compiler_options_get_output_format(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_output_format(handle, FridaOutputFormat(rawValue: newValue.rawValue))
+            frida_compiler_options_set_output_format(handle, FridaOutputFormat(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
     public var bundleFormat: BundleFormat {
         get {
-            BundleFormat(rawValue: frida_compiler_options_get_bundle_format(handle).rawValue)!
+            BundleFormat(rawValue: numericCast(frida_compiler_options_get_bundle_format(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_bundle_format(handle, FridaBundleFormat(rawValue: newValue.rawValue))
+            frida_compiler_options_set_bundle_format(handle, FridaBundleFormat(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
     public var typeCheck: TypeCheckMode {
         get {
-            TypeCheckMode(rawValue: frida_compiler_options_get_type_check(handle).rawValue)!
+            TypeCheckMode(rawValue: numericCast(frida_compiler_options_get_type_check(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_type_check(handle, FridaTypeCheckMode(rawValue: newValue.rawValue))
+            frida_compiler_options_set_type_check(handle, FridaTypeCheckMode(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
     public var sourceMaps: SourceMaps {
         get {
-            SourceMaps(rawValue: frida_compiler_options_get_source_maps(handle).rawValue)!
+            SourceMaps(rawValue: numericCast(frida_compiler_options_get_source_maps(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_source_maps(handle, FridaSourceMaps(rawValue: newValue.rawValue))
+            frida_compiler_options_set_source_maps(handle, FridaSourceMaps(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
     public var compression: JsCompression {
         get {
-            JsCompression(rawValue: frida_compiler_options_get_compression(handle).rawValue)!
+            JsCompression(rawValue: numericCast(frida_compiler_options_get_compression(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_compression(handle, FridaJsCompression(rawValue: newValue.rawValue))
+            frida_compiler_options_set_compression(handle, FridaJsCompression(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
     public var platform: JsPlatform {
         get {
-            JsPlatform(rawValue: frida_compiler_options_get_platform(handle).rawValue)!
+            JsPlatform(rawValue: numericCast(frida_compiler_options_get_platform(handle).rawValue))!
         }
         set {
-            frida_compiler_options_set_platform(handle, FridaJsPlatform(rawValue: newValue.rawValue))
+            frida_compiler_options_set_platform(handle, FridaJsPlatform(rawValue: numericCast(newValue.rawValue)))
         }
     }
 

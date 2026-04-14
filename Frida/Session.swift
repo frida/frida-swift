@@ -202,7 +202,7 @@ public final class Session: @unchecked Sendable, CustomStringConvertible, Equata
         }
 
         if let runtime {
-            frida_script_options_set_runtime(options, FridaScriptRuntime(runtime.rawValue))
+            frida_script_options_set_runtime(options, FridaScriptRuntime(numericCast(runtime.rawValue)))
         }
 
         return options

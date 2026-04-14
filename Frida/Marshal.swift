@@ -17,7 +17,7 @@ class Marshal {
         }
 
         if domain == frida_error_quark() {
-            let fridaCode = FridaError(UInt32(code))
+            let fridaCode = FridaError(numericCast(code))
 
             switch fridaCode {
             case FRIDA_ERROR_SERVER_NOT_RUNNING:

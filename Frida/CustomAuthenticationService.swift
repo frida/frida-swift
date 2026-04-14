@@ -46,7 +46,7 @@ public final class CustomAuthenticationService: @unchecked Sendable, Authenticat
                 g_type_from_name("GObject"),
                 cStr,
                 &info,
-                GTypeFlags(0)
+                GTypeFlags(rawValue: 0)
             )
         }
 

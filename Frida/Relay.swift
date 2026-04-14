@@ -4,7 +4,7 @@ public final class Relay: CustomStringConvertible, Equatable, Hashable {
     internal let handle: OpaquePointer
 
     init(address: String, username: String, password: String, kind: RelayKind) {
-        self.handle = frida_relay_new(address, username, password, FridaRelayKind(kind.rawValue))
+        self.handle = frida_relay_new(address, username, password, FridaRelayKind(numericCast(kind.rawValue)))
     }
 
     private init(handle: OpaquePointer) {
@@ -28,7 +28,7 @@ public final class Relay: CustomStringConvertible, Equatable, Hashable {
     }
 
     public var kind: RelayKind {
-        return RelayKind(rawValue: frida_relay_get_kind(handle).rawValue)!
+        return RelayKind(rawValue: numericCast(frida_relay_get_kind(handle).rawValue))!
     }
 
     public var description: String {

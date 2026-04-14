@@ -135,7 +135,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             let options = frida_frontmost_query_options_new()
 
             if let scope {
-                frida_frontmost_query_options_set_scope(options, FridaScope(scope.rawValue))
+                frida_frontmost_query_options_set_scope(options, FridaScope(numericCast(scope.rawValue)))
             }
 
             frida_device_get_frontmost_application(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -166,7 +166,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
 
             if let scope {
-                frida_application_query_options_set_scope(options, FridaScope(scope.rawValue))
+                frida_application_query_options_set_scope(options, FridaScope(numericCast(scope.rawValue)))
             }
 
             frida_device_enumerate_applications(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -204,7 +204,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
 
             if let scope {
-                frida_process_query_options_set_scope(options, FridaScope(scope.rawValue))
+                frida_process_query_options_set_scope(options, FridaScope(numericCast(scope.rawValue)))
             }
 
             frida_device_enumerate_processes(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -349,7 +349,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
 
             if let stdio {
-                frida_spawn_options_set_stdio(options, FridaStdio(stdio.rawValue))
+                frida_spawn_options_set_stdio(options, FridaStdio(numericCast(stdio.rawValue)))
             }
 
             frida_device_spawn(self.handle, program, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -433,7 +433,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             let options = frida_session_options_new()
 
             if let realm {
-                frida_session_options_set_realm(options, FridaRealm(realm.rawValue))
+                frida_session_options_set_realm(options, FridaRealm(numericCast(realm.rawValue)))
             }
 
             if let persistTimeout {

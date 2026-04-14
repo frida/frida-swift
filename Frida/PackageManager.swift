@@ -91,7 +91,7 @@ public final class PackageManager: @unchecked Sendable, CustomStringConvertible,
 
         guard let manager = connection.instance else { return }
 
-        let phase = PackageInstallPhase(rawValue: nativePhase.rawValue)!
+        let phase = PackageInstallPhase(rawValue: numericCast(nativePhase.rawValue))!
         let details = rawDetails.map { String(cString: $0) }
 
         manager.publish(.installProgress(phase: phase, fraction: Double(fraction), details: details))
@@ -261,10 +261,10 @@ public final class PackageInstallOptions: @unchecked Sendable {
 
     public var role: PackageRole {
         get {
-            return PackageRole(rawValue: frida_package_install_options_get_role(handle).rawValue)!
+            return PackageRole(rawValue: numericCast(frida_package_install_options_get_role(handle).rawValue))!
         }
         set {
-            frida_package_install_options_set_role(handle, FridaPackageRole(rawValue: newValue.rawValue))
+            frida_package_install_options_set_role(handle, FridaPackageRole(rawValue: numericCast(newValue.rawValue)))
         }
     }
 
@@ -289,7 +289,7 @@ public final class PackageInstallOptions: @unchecked Sendable {
             for role in newValue {
                 frida_package_install_options_add_omit(
                     handle,
-                    FridaPackageRole(rawValue: role.rawValue)
+                    FridaPackageRole(rawValue: numericCast(role.rawValue))
                 )
             }
         }

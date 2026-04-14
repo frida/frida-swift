@@ -6,7 +6,7 @@ func connectSignal<Handler>(
     handle: OpaquePointer,
     signal: UnsafePointer<CChar>,
     handler: Handler,
-    flags: GConnectFlags = GConnectFlags(0)
+    flags: GConnectFlags = GConnectFlags(rawValue: 0)
 ) -> gulong {
     return g_signal_connect_data(
         gpointer(handle),

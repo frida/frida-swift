@@ -20,7 +20,7 @@ public final class ChildDetails: CustomStringConvertible, Equatable, Hashable {
     }
 
     public var origin: ChildOrigin {
-        return ChildOrigin(rawValue: frida_child_get_origin(handle).rawValue)!
+        return ChildOrigin(rawValue: numericCast(frida_child_get_origin(handle).rawValue))!
     }
 
     public var identifier: String? {
