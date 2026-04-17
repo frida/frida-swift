@@ -74,6 +74,22 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
         return EndpointParameters.init(handle: raw)
     }
 
+    public func addClusterEndpoint(_ endpointParameters: EndpointParameters) throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_portal_service_add_cluster_endpoint(handle, endpointParameters.handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public func addControlEndpoint(_ endpointParameters: EndpointParameters) throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_portal_service_add_control_endpoint(handle, endpointParameters.handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
     public func start() async throws {
         try await fridaAsync(Void.self) { op in
             frida_portal_service_start(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
