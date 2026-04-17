@@ -2,6 +2,7 @@ import FridaCore
 
 public final class EndpointParameters: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     internal let handle: OpaquePointer
+    private var _requestHandler: WebRequestHandler?
 
     public convenience init(
         address: String? = nil,
@@ -65,6 +66,14 @@ public final class EndpointParameters: @unchecked Sendable, CustomStringConverti
         }
         set {
             frida_endpoint_parameters_set_asset_root(handle, newValue?.handle)
+        }
+    }
+
+    public var requestHandler: WebRequestHandler? {
+        get { _requestHandler }
+        set {
+            _requestHandler = newValue
+            frida_endpoint_parameters_set_request_handler(handle, newValue?.handle)
         }
     }
 }

@@ -10,6 +10,7 @@ sources = [
   'Compiler.swift',
   'CrashDetails.swift',
   'CustomAuthenticationService.swift',
+  'CustomWebRequestHandler.swift',
   'Device.swift',
   'DeviceListModel.swift',
   'DeviceManager.swift',
@@ -34,6 +35,7 @@ sources = [
   'Session.swift',
   'SignalConnection.swift',
   'SpawnDetails.swift',
+  'WebRequestHandler.swift',
 ]
 
 subdir('GLib')
