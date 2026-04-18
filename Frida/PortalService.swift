@@ -8,7 +8,7 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
     public typealias Events = AsyncStream<Event>
 
     @frozen
-    public enum Event {
+    public enum Event: @unchecked Sendable {
         case authenticated(connectionId: ConnectionID, sessionInfo: String)
         case controllerConnected(connectionId: ConnectionID, remoteAddress: SocketAddress)
         case controllerDisconnected(connectionId: ConnectionID, remoteAddress: SocketAddress)
