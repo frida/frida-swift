@@ -1,4 +1,7 @@
 import FridaCore
+#if canImport(Foundation)
+import Foundation
+#endif
 
 public enum JSONGLib {
     public static func string(from value: Any, pretty: Bool = false) throws -> String {
@@ -34,6 +37,12 @@ public enum JSONGLib {
         if let array = value as? [Any] {
             return try makeArrayNode(from: array)
         }
+
+        #if canImport(Foundation)
+        if let num = value as? NSNumber {
+            return makeNodeFromNSNumber(num)
+        }
+        #endif
 
         if let b = value as? Bool {
             return makeBoolNode(b)
@@ -71,6 +80,20 @@ public enum JSONGLib {
 
         throw Error.invalidArgument("Unsupported value type")
     }
+
+    #if canImport(Foundation)
+    private static func makeNodeFromNSNumber(_ num: NSNumber) -> OpaquePointer {
+        if CFGetTypeID(num) == CFBooleanGetTypeID() {
+            return makeBoolNode(num.boolValue)
+        }
+        switch UnicodeScalar(UInt8(num.objCType.pointee)) {
+        case "f", "d":
+            return makeDoubleNode(num.doubleValue)
+        default:
+            return makeIntNode(num.int64Value)
+        }
+    }
+    #endif
 
     private static func makeObjectNode(from dict: [String: Any]) throws -> OpaquePointer {
         let node = json_node_new(JSON_NODE_OBJECT)!
