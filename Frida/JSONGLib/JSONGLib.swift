@@ -1,5 +1,5 @@
 import FridaCore
-#if canImport(Foundation)
+#if canImport(Darwin)
 import Foundation
 #endif
 
@@ -38,7 +38,7 @@ public enum JSONGLib {
             return try makeArrayNode(from: array)
         }
 
-        #if canImport(Foundation)
+        #if canImport(Darwin)
         if let num = value as? NSNumber {
             return makeNodeFromNSNumber(num)
         }
@@ -81,7 +81,7 @@ public enum JSONGLib {
         throw Error.invalidArgument("Unsupported value type")
     }
 
-    #if canImport(Foundation)
+    #if canImport(Darwin)
     private static func makeNodeFromNSNumber(_ num: NSNumber) -> OpaquePointer {
         if CFGetTypeID(num) == CFBooleanGetTypeID() {
             return makeBoolNode(num.boolValue)
