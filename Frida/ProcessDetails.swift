@@ -30,6 +30,10 @@ public final class ProcessDetails: CustomStringConvertible, Equatable, Hashable,
         return iconDicts.map(Marshal.iconFromVarDict)
     }()
 
+    public lazy var argv: [String]? = {
+        return parameters["argv"] as? [String]
+    }()
+
     public var description: String {
         return "Frida.ProcessDetails(pid: \(pid), name: \"\(name)\", parameters: \(parameters))"
     }
