@@ -1,8 +1,10 @@
-import FridaCore
+internal import FridaCore
 
 class Marshal {
     private static let gvariantByteArrayType = g_variant_type_new("ay")
     private static let gvariantVarDictType = g_variant_type_new("a{sv}")
+    private static let gvariantByteType = g_variant_type_new("y")
+    private static let gvariantVariantArrayType = g_variant_type_new("av")
 
     static func takeNativeError(_ error: UnsafeMutablePointer<GError>) -> Swift.Error {
         let domain = error.pointee.domain
@@ -176,6 +178,63 @@ class Marshal {
             g_variant_unref(child)
         }
 
+        return result
+    }
+
+    static func variantFromValue(_ value: Any) -> OpaquePointer {
+        switch value {
+        case let string as String:
+            return g_variant_new_string(string)
+        case let flag as Bool:
+            return g_variant_new_boolean(flag ? gboolean(1) : gboolean(0))
+        case let number as Int:
+            return g_variant_new_int64(gint64(number))
+        case let number as Int64:
+            return g_variant_new_int64(number)
+        case let number as UInt:
+            return g_variant_new_uint64(guint64(number))
+        case let number as UInt64:
+            return g_variant_new_uint64(number)
+        case let number as Double:
+            return g_variant_new_double(number)
+        case let bytes as [UInt8]:
+            return byteArrayVariant(bytes)
+        case let dict as [String: Any]:
+            return varDictVariant(dict)
+        case let array as [Any]:
+            return arrayVariant(array)
+        default:
+            fatalError("Unsupported value for GVariant: \(value)")
+        }
+    }
+
+    private static func byteArrayVariant(_ bytes: [UInt8]) -> OpaquePointer {
+        return bytes.withUnsafeBufferPointer { buffer in
+            g_variant_new_fixed_array(gvariantByteType, buffer.baseAddress, gsize(bytes.count), 1)
+        }
+    }
+
+    private static func varDictVariant(_ dict: [String: Any]) -> OpaquePointer {
+        let builder = g_variant_builder_new(gvariantVarDictType)
+        for (key, value) in dict {
+            let entry = g_variant_new_dict_entry(
+                g_variant_new_string(key),
+                g_variant_new_variant(variantFromValue(value))
+            )
+            g_variant_builder_add_value(builder, entry)
+        }
+        let result = g_variant_builder_end(builder)!
+        g_variant_builder_unref(builder)
+        return result
+    }
+
+    private static func arrayVariant(_ array: [Any]) -> OpaquePointer {
+        let builder = g_variant_builder_new(gvariantVariantArrayType)
+        for value in array {
+            g_variant_builder_add_value(builder, g_variant_new_variant(variantFromValue(value)))
+        }
+        let result = g_variant_builder_end(builder)!
+        g_variant_builder_unref(builder)
         return result
     }
 

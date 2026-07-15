@@ -1,4 +1,4 @@
-import FridaCore
+internal import FridaCore
 #if canImport(Darwin)
 import Foundation
 #endif

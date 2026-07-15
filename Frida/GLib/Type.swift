@@ -1,4 +1,4 @@
-import FridaCore
+internal import FridaCore
 
 extension GType {
     static let boolean: GType = makeFundamental(5)

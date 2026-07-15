@@ -1,4 +1,4 @@
-import FridaCore
+internal import FridaCore
 
 enum Runtime {
     typealias Handler = @convention(block) () -> Void

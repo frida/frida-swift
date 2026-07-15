@@ -1,4 +1,4 @@
-import FridaCore
+internal import FridaCore
 
 extension GLib {
     public final class DateTime: CustomStringConvertible, Equatable, Hashable {

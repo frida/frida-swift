@@ -1,4 +1,4 @@
-import FridaCore
+internal import FridaCore
 
 func fridaAsync<Result>(
     _ resultType: Result.Type,
