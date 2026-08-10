@@ -190,11 +190,11 @@ class Marshal {
         case let number as Int:
             return g_variant_new_int64(gint64(number))
         case let number as Int64:
-            return g_variant_new_int64(number)
+            return g_variant_new_int64(gint64(number))
         case let number as UInt:
             return g_variant_new_uint64(guint64(number))
         case let number as UInt64:
-            return g_variant_new_uint64(number)
+            return g_variant_new_uint64(guint64(number))
         case let number as Double:
             return g_variant_new_double(number)
         case let bytes as [UInt8]:
