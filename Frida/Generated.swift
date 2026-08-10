@@ -204,6 +204,34 @@ public enum Realm: UInt32, Codable, CustomStringConvertible {
 }
 
 @frozen
+public enum Exceptor: UInt32, Codable, CustomStringConvertible {
+    case full = 0
+    case handlerOnly = 1
+    case off = 2
+
+    public var description: String {
+        switch self {
+        case .full: return "full"
+        case .handlerOnly: return "handlerOnly"
+        case .off: return "off"
+        }
+    }
+}
+
+@frozen
+public enum SpawnGatingDisabledReason: UInt32, Codable, CustomStringConvertible {
+    case applicationRequested = 0
+    case watchdogTimeout = 1
+
+    public var description: String {
+        switch self {
+        case .applicationRequested: return "applicationRequested"
+        case .watchdogTimeout: return "watchdogTimeout"
+        }
+    }
+}
+
+@frozen
 public enum SessionDetachReason: UInt32, Codable, CustomStringConvertible {
     case applicationRequested = 1
     case processReplaced = 2
@@ -233,6 +261,21 @@ public enum Scope: UInt32, Codable, CustomStringConvertible {
         case .minimal: return "minimal"
         case .metadata: return "metadata"
         case .full: return "full"
+        }
+    }
+}
+
+@frozen
+public enum SpawnGatingScope: UInt32, Codable, CustomStringConvertible {
+    case `default` = 0
+    case applications = 1
+    case processes = 2
+
+    public var description: String {
+        switch self {
+        case .`default`: return "default"
+        case .applications: return "applications"
+        case .processes: return "processes"
         }
     }
 }
@@ -609,6 +652,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
 
     init(handle: OpaquePointer) {
         self.handle = handle
+        connectSignal(instance: self, handle: handle, signal: "spawn-gating-disabled", handler: onSpawnGatingDisabled)
         connectSignal(instance: self, handle: handle, signal: "spawn-added", handler: onSpawnAdded)
         connectSignal(instance: self, handle: handle, signal: "spawn-removed", handler: onSpawnRemoved)
         connectSignal(instance: self, handle: handle, signal: "child-added", handler: onChildAdded)
@@ -632,6 +676,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
 
     @frozen
     public enum Event {
+        case spawnGatingDisabled(SpawnGatingDisabledReason)
         case spawnAdded(SpawnDetails)
         case spawnRemoved(SpawnDetails)
         case childAdded(ChildDetails)
@@ -875,9 +920,13 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    public func enableSpawnGating() async throws -> Void {
+    public func enableSpawnGating(scope: SpawnGatingScope? = nil) async throws -> Void {
         return try await fridaAsync(Void.self) { op in
-            frida_device_enable_spawn_gating(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+            let options = frida_spawn_gating_options_new()!
+            if let scope = scope {
+                frida_spawn_gating_options_set_scope(options, FridaSpawnGatingScope(numericCast(scope.rawValue)))
+            }
+            frida_device_enable_spawn_gating(self.handle, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<Void>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -890,6 +939,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
 
                 op.resumeSuccess(())
             }, op.userData)
+            g_object_unref(gpointer(options))
         }
     }
 
@@ -1056,9 +1106,12 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    public func attach(pid: UInt, realm: Realm? = nil, persistTimeout: UInt? = nil, emulatedAgentPath: String? = nil) async throws -> Session {
+    public func attach(pid: UInt, linkerNotifierOffsets: [UInt]? = nil, realm: Realm? = nil, persistTimeout: UInt? = nil, emulatedAgentPath: String? = nil, exceptor: Exceptor? = nil, unwindBroker: Bool? = nil, exitMonitor: Bool? = nil, threadSuspendMonitor: Bool? = nil) async throws -> Session {
         return try await fridaAsync(Session.self) { op in
             let options = frida_session_options_new()!
+            for element in linkerNotifierOffsets ?? [] {
+                frida_session_options_add_linker_notifier_offset(options, guint(element))
+            }
             if let realm = realm {
                 frida_session_options_set_realm(options, FridaRealm(numericCast(realm.rawValue)))
             }
@@ -1067,6 +1120,18 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
             if let emulatedAgentPath = emulatedAgentPath {
                 frida_session_options_set_emulated_agent_path(options, emulatedAgentPath)
+            }
+            if let exceptor = exceptor {
+                frida_session_options_set_exceptor(options, FridaExceptor(numericCast(exceptor.rawValue)))
+            }
+            if let unwindBroker = unwindBroker {
+                frida_session_options_set_unwind_broker(options, unwindBroker ? gboolean(1) : gboolean(0))
+            }
+            if let exitMonitor = exitMonitor {
+                frida_session_options_set_exit_monitor(options, exitMonitor ? gboolean(1) : gboolean(0))
+            }
+            if let threadSuspendMonitor = threadSuspendMonitor {
+                frida_session_options_set_thread_suspend_monitor(options, threadSuspendMonitor ? gboolean(1) : gboolean(0))
             }
             frida_device_attach(self.handle, guint(pid), options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<Session>.takeRetained(from: userData!)
@@ -1185,6 +1250,12 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         if let rawError {
             throw Marshal.takeNativeError(rawError)
         }
+    }
+
+    private let onSpawnGatingDisabled: @convention(c) (OpaquePointer, Int, gpointer) -> Void = { _, arg0, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+        guard let instance = connection.instance else { return }
+        instance.publish(.spawnGatingDisabled(SpawnGatingDisabledReason(rawValue: numericCast(arg0))!))
     }
 
     private let onSpawnAdded: @convention(c) (OpaquePointer, OpaquePointer, gpointer) -> Void = { _, arg0, userData in
@@ -2040,6 +2111,24 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
+    public func interrupt() async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_interrupt(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_interrupt_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+        }
+    }
+
     public func unload() async throws -> Void {
         return try await fridaAsync(Void.self) { op in
             frida_script_unload(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
@@ -2047,6 +2136,24 @@ public final class Script: @unchecked Sendable, CustomStringConvertible, Equatab
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
                 frida_script_unload_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+        }
+    }
+
+    public func terminate() async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            frida_script_terminate(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_script_terminate_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
 
                 if let rawError {
                     op.resumeFailure(Marshal.takeNativeError(rawError))
