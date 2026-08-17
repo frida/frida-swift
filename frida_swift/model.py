@@ -146,6 +146,30 @@ class ObjectType(core.ObjectType):
         return "frida_" + to_snake_case(self.name)
 
     @cached_property
+    def emitted_parent(self) -> Optional["ObjectType"]:
+        parent = self.parent
+        if parent is None or not parent.emit_class:
+            return None
+        return parent
+
+    @cached_property
+    def has_emitted_subclasses(self) -> bool:
+        return any(t.emitted_parent is self for t in self.model.regular_object_types)
+
+    @cached_property
+    def inherited_member_names(self) -> set:
+        names = set()
+        current = self.emitted_parent
+        while current is not None:
+            names.update(m.property_name for m in current.emitted_properties)
+            names.update(m.swift_name for m in current.emitted_async_methods)
+            names.update(m.swift_name for m in current.emitted_custom_methods)
+            names.update(m.swift_name for m in current.emitted_sync_methods)
+            names.update(current.inherited_member_names)
+            current = current.emitted_parent
+        return names
+
+    @cached_property
     def emitted_properties(self) -> List["Method"]:
         return [m for m in self.methods if m.is_swift_getter]
 

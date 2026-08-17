@@ -141,17 +141,21 @@ def generate_class(otype: ObjectType, model: Model) -> str:
 
 {generate_event_enum(otype, model)}""")
 
+    inherited = set(otype.inherited_member_names)
+    if otype.emitted_parent is not None:
+        inherited.add("description")
+
     for method in otype.emitted_properties:
-        members.append(generate_getter(method, model))
+        members.append(apply_override(generate_getter(method, model), method.property_name, inherited))
 
     for method in otype.emitted_async_methods:
-        members.append(generate_async_method(otype, method, model))
+        members.append(apply_override(generate_async_method(otype, method, model), method.swift_name, inherited))
 
     for method in otype.emitted_custom_methods:
-        members.append(generate_custom_method(method, model))
+        members.append(apply_override(generate_custom_method(method, model), method.swift_name, inherited))
 
     for method in otype.emitted_sync_methods:
-        members.append(generate_sync_method(method, model))
+        members.append(apply_override(generate_sync_method(method, model), method.swift_name, inherited))
 
     if signals:
         for s in otype.emitted_signals:
@@ -164,7 +168,7 @@ def generate_class(otype: ObjectType, model: Model) -> str:
                           for m in otype.emitted_properties)
 
     if not has_description:
-        members.append(generate_description(otype, model))
+        members.append(apply_override(generate_description(otype, model), "description", inherited))
 
     if otype.extra_members is not None:
         members.append(otype.extra_members)
@@ -176,17 +180,30 @@ def generate_class(otype: ObjectType, model: Model) -> str:
     if body:
         body += "\n\n"
 
-    conformances = ["Equatable", "Hashable"] + otype.extra_conformances
-    if not has_description:
-        conformances.insert(0, "CustomStringConvertible")
+    parent = otype.emitted_parent
+
+    if parent is None:
+        conformances = ["Equatable", "Hashable"] + otype.extra_conformances
+        if not has_description:
+            conformances.insert(0, "CustomStringConvertible")
+    else:
+        conformances = [parent.swift_name] + otype.extra_conformances
     if (signals or otype.sendable) and "@unchecked Sendable" not in conformances:
         conformances.insert(0, "@unchecked Sendable")
 
-    stored = "    let handle: OpaquePointer\n"
+    stored = ""
+    if parent is None:
+        stored += "    let handle: OpaquePointer\n"
     if signals:
         stored += "    private let eventSource = AsyncEventSource<Event>()\n"
 
-    init_lines = ["        self.handle = handle"]
+    public_init = generate_public_init(otype, model)
+
+    init_lines = []
+    if parent is None:
+        init_lines.append("        self.handle = handle")
+    else:
+        init_lines.append("        super.init(handle: handle)")
     for s in otype.emitted_signals if signals else []:
         init_lines.append(
             f'        connectSignal(instance: self, handle: handle, '
@@ -195,31 +212,103 @@ def generate_class(otype: ObjectType, model: Model) -> str:
         init_lines.append(otype.custom_init)
     init_body = "\n".join(init_lines) + "\n"
 
-    deinit_lines = []
-    if signals:
-        deinit_lines.append("        eventSource.finish()")
-    if otype.custom_deinit is not None:
-        deinit_lines.append(otype.custom_deinit)
-    deinit_lines.append("        g_object_unref(gpointer(handle))")
-    deinit_body = "\n".join(deinit_lines) + "\n"
+    init_keyword = "init" if parent is None else "override init"
 
-    return f"""\
-public final class {name}: {', '.join(conformances)} {{
-{stored}
-    init(handle: OpaquePointer) {{
-{init_body}    }}
-
+    if parent is None:
+        deinit_lines = []
+        if signals:
+            deinit_lines.append("        eventSource.finish()")
+        if otype.custom_deinit is not None:
+            deinit_lines.append(otype.custom_deinit)
+        deinit_lines.append("        g_object_unref(gpointer(handle))")
+        deinit_body = "\n".join(deinit_lines) + "\n"
+        deinit_section = f"""
     deinit {{
 {deinit_body}    }}
-
-{body}    public static func == (lhs: {name}, rhs: {name}) -> Bool {{
+"""
+        equatable_section = f"""    public static func == (lhs: {name}, rhs: {name}) -> Bool {{
         return lhs.handle == rhs.handle
     }}
 
     public func hash(into hasher: inout Hasher) {{
         hasher.combine(UInt(bitPattern: handle))
     }}
-}}"""
+"""
+    else:
+        deinit_section = ""
+        equatable_section = ""
+
+    if not body and not equatable_section:
+        body = ""
+
+    class_keyword = "public class" if otype.has_emitted_subclasses else "public final class"
+
+    return f"""\
+{class_keyword} {name}: {', '.join(conformances)} {{
+{stored}
+    {init_keyword}(handle: OpaquePointer) {{
+{init_body}    }}
+{public_init}{deinit_section}
+{body}{equatable_section}}}"""
+
+
+def generate_public_init(otype: ObjectType, model: Model) -> str:
+    if otype.custom_members is not None and "init(" in read_asset(otype.custom_members):
+        return ""
+
+    ctor = otype.constructors[0] if otype.constructors else None
+    if ctor is None or ctor.throws:
+        return ""
+
+    new_func = ctor.c_identifier
+
+    if ctor.parameters:
+        sig = []
+        args = []
+        for param in ctor.parameters:
+            kind = swift_sync_input(param.type, model)
+            if kind is None:
+                return ""
+            tag, swift_type = kind
+            arg = swift_ident(param.name)
+            sig.append(f"{arg}: {swift_type}")
+            if tag == "object":
+                args.append(f"{arg}.handle")
+            elif tag == "enum":
+                cenum = param.type.c.replace("*", "").strip()
+                args.append(f"{cenum}(numericCast({arg}.rawValue))")
+            elif tag == "scalar" and swift_type != "Bool":
+                args.append(f"{_C_SCALAR[param.type.name]}({arg})")
+            elif tag == "scalar":
+                args.append(f"{arg} ? gboolean(1) : gboolean(0)")
+            else:
+                args.append(arg)
+        body = [f"let handle = {new_func}({', '.join(args)})!"]
+    else:
+        sig, setters = collect_settings(otype, model, "handle")
+        if not sig:
+            return ""
+        body = [f"let handle = {new_func}()!"] + setters
+
+    if otype.emitted_parent is not None:
+        body.append("super.init(handle: handle)")
+    else:
+        body.append("self.handle = handle")
+
+    lines = "\n".join(f"        {line}" for line in body)
+
+    return f"""
+    public init({', '.join(sig)}) {{
+        Runtime.ensureInitialized()
+{lines}
+    }}
+"""
+
+
+def apply_override(member: str, name: str, inherited) -> str:
+    if name not in inherited:
+        return member
+    return member.replace("    public ", "    public override ", 1)
 
 
 def to_pascal(camel: str) -> str:
@@ -672,9 +761,19 @@ def expand_options(param: Parameter, model: Model):
 
     sig: List[str] = []
     pre: List[str] = [f"let options = {new_func}()!"]
+    sig, setter_lines = collect_settings(otype, model, "options",
+                                         stop_at_parent=lambda t: t.is_frida_options)
+    pre.extend(setter_lines)
 
-    # Setters may live on a parent options type (e.g. Build/WatchOptions
-    # inherit CompilerOptions' setters), so walk the chain.
+    post = ["g_object_unref(gpointer(options))"]
+    return sig, pre, post
+
+
+
+def collect_settings(otype, model: Model, target: str, stop_at_parent=None):
+    sig: List[str] = []
+    lines: List[str] = []
+
     seen = set()
     current = otype
     while current is not None:
@@ -682,19 +781,21 @@ def expand_options(param: Parameter, model: Model):
             if setter.name in seen:
                 continue
             seen.add(setter.name)
-            entry = classify_option_setter(setter, model)
+            entry = classify_option_setter(setter, model, target)
             if entry is None:
                 continue
             arg_name, swift_type, build = entry
             sig.append(f"{arg_name}: {swift_type} = nil")
-            pre.extend(build)
-        current = current.parent if current.parent is not None and current.parent.is_frida_options else None
+            lines.extend(build)
+        parent = current.parent
+        if parent is None or (stop_at_parent is not None and not stop_at_parent(parent)):
+            break
+        current = parent
 
-    post = ["g_object_unref(gpointer(options))"]
-    return sig, pre, post
+    return sig, lines
 
 
-def classify_option_setter(setter: Method, model: Model):
+def classify_option_setter(setter: Method, model: Model, target: str = "options"):
     """Return (arg_name, swift_type, build_lines) for a supported option setter."""
     from frida_bindgen_core.naming import to_camel_case
     name = setter.name
@@ -711,39 +812,61 @@ def classify_option_setter(setter: Method, model: Model):
             build = [
                 f"let ({raw}, {raw}Length) = Marshal.{converter}({arg})",
                 f"if let {raw} = {raw} {{",
-                f"    {setter.c_identifier}(options, {raw}, {raw}Length)",
+                f"    {setter.c_identifier}({target}, {raw}, {raw}Length)",
                 f"    g_strfreev({raw})",
                 f"}}",
             ]
             return arg, swift_type, build
         if len(params) != 1:
             return None
-        return _scalar_setter(setter, arg, params[0], model)
+        return _scalar_setter(setter, arg, params[0], model, target)
 
     if name.startswith("select_") or name.startswith("add_"):
         prop = name.split("_", 1)[1]
         arg = swift_ident(prop) + "s"
+        if len(params) == 2 and params[0].type.name == "utf8":
+            return _mapping_setter(setter, arg, params[1], model, target)
         if len(params) != 1:
             return None
-        return _adder_setter(setter, arg, params[0], model)
+        return _adder_setter(setter, arg, params[0], model, target)
 
     return None
 
 
-def _scalar_setter(setter, arg, param, model):
-    kind = swift_input_kind(param.type, model)
+
+def _mapping_setter(setter, arg, param, model, target="options"):
+    kind = swift_sync_input(param.type, model)
+    if kind is None:
+        return None
+    tag, swift_type = kind
+    call = setter.c_identifier
+    if tag == "string":
+        return arg, "[String: String]?", [
+            f"for (key, element) in {arg} ?? [:] {{", f"    {call}({target}, key, element)", f"}}"]
+    if tag == "scalar" and swift_type != "Bool":
+        cname = _C_SCALAR[param.type.name]
+        return arg, f"[String: {swift_type}]?", [
+            f"for (key, element) in {arg} ?? [:] {{", f"    {call}({target}, key, {cname}(element))", f"}}"]
+    if tag == "object":
+        return arg, f"[String: {swift_type}]?", [
+            f"for (key, element) in {arg} ?? [:] {{", f"    {call}({target}, key, element.handle)", f"}}"]
+    return None
+
+
+def _scalar_setter(setter, arg, param, model, target="options"):
+    kind = swift_sync_input(param.type, model)
     if kind is None:
         return None
     call = setter.c_identifier
     tag, swift_type = kind
     if tag == "string":
-        return arg, "String?", [f"if let {arg} = {arg} {{", f"    {call}(options, {arg})", f"}}"]
+        return arg, "String?", [f"if let {arg} = {arg} {{", f"    {call}({target}, {arg})", f"}}"]
     if tag == "bytes":
         raw = f"raw{arg[0].upper()}{arg[1:]}"
         return arg, "[UInt8]?", [
             f"let {raw} = Marshal.bytesFromArray({arg})",
             f"if let {raw} = {raw} {{",
-            f"    {call}(options, {raw})",
+            f"    {call}({target}, {raw})",
             f"    g_bytes_unref({raw})",
             f"}}",
         ]
@@ -751,24 +874,27 @@ def _scalar_setter(setter, arg, param, model):
         if swift_type == "Bool":
             return arg, "Bool?", [
                 f"if let {arg} = {arg} {{",
-                f"    {call}(options, {arg} ? gboolean(1) : gboolean(0))",
+                f"    {call}({target}, {arg} ? gboolean(1) : gboolean(0))",
                 f"}}",
             ]
         cname = _C_SCALAR[param.type.name]
         return arg, f"{swift_type}?", [
-            f"if let {arg} = {arg} {{", f"    {call}(options, {cname}({arg}))", f"}}"]
+            f"if let {arg} = {arg} {{", f"    {call}({target}, {cname}({arg}))", f"}}"]
     if tag == "enum":
         cenum = param.type.c.replace("*", "").strip()
         return arg, f"{swift_type}?", [
             f"if let {arg} = {arg} {{",
-            f"    {call}(options, {cenum}(numericCast({arg}.rawValue)))",
+            f"    {call}({target}, {cenum}(numericCast({arg}.rawValue)))",
             f"}}",
         ]
+    if tag == "object":
+        return arg, f"{swift_type}?", [
+            f"if let {arg} = {arg} {{", f"    {call}({target}, {arg}.handle)", f"}}"]
     return None
 
 
-def _adder_setter(setter, arg, param, model):
-    kind = swift_input_kind(param.type, model)
+def _adder_setter(setter, arg, param, model, target="options"):
+    kind = swift_sync_input(param.type, model)
     if kind is None:
         return None
     tag, swift_type = kind
@@ -776,18 +902,21 @@ def _adder_setter(setter, arg, param, model):
     if tag == "string":
         elem = "element"
         return arg, "[String]?", [
-            f"for {elem} in {arg} ?? [] {{", f"    {call}(options, {elem})", f"}}"]
+            f"for {elem} in {arg} ?? [] {{", f"    {call}({target}, {elem})", f"}}"]
     if tag == "scalar" and swift_type != "Bool":
         cname = _C_SCALAR[param.type.name]
         return arg, f"[{swift_type}]?", [
-            f"for element in {arg} ?? [] {{", f"    {call}(options, {cname}(element))", f"}}"]
+            f"for element in {arg} ?? [] {{", f"    {call}({target}, {cname}(element))", f"}}"]
     if tag == "enum":
         cenum = param.type.c.replace("*", "").strip()
         return arg, f"[{swift_type}]?", [
             f"for element in {arg} ?? [] {{",
-            f"    {call}(options, {cenum}(numericCast(element.rawValue)))",
+            f"    {call}({target}, {cenum}(numericCast(element.rawValue)))",
             f"}}",
         ]
+    if tag == "object":
+        return arg, f"[{swift_type}]?", [
+            f"for element in {arg} ?? [] {{", f"    {call}({target}, element.handle)", f"}}"]
     return None
 
 

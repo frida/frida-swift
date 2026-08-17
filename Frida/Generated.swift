@@ -65,6 +65,53 @@ public enum DeviceType: UInt32, Codable, CustomStringConvertible {
 }
 
 @frozen
+public enum BareboneKernelKind: UInt32, Codable, CustomStringConvertible {
+    case auto = 0
+    case bare = 1
+    case xnu = 2
+    case win9x = 3
+    case winnt = 4
+
+    public var description: String {
+        switch self {
+        case .auto: return "auto"
+        case .bare: return "bare"
+        case .xnu: return "xnu"
+        case .win9x: return "win9x"
+        case .winnt: return "winnt"
+        }
+    }
+}
+
+@frozen
+public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
+    case gdbRemote = 0
+    case vz = 1
+
+    public var description: String {
+        switch self {
+        case .gdbRemote: return "gdbRemote"
+        case .vz: return "vz"
+        }
+    }
+}
+
+@frozen
+public enum BareboneCallArgumentRole: UInt32, Codable, CustomStringConvertible {
+    case size = 0
+    case address = 1
+    case literal = 2
+
+    public var description: String {
+        switch self {
+        case .size: return "size"
+        case .address: return "address"
+        case .literal: return "literal"
+        }
+    }
+}
+
+@frozen
 public enum PackageInstallPhase: UInt32, Codable, CustomStringConvertible {
     case initializing = 0
     case preparingDependencies = 1
@@ -1342,6 +1389,681 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
     }
 }
 
+public final class BareboneConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(connection: BareboneConnectionConfig? = nil, allocator: BareboneAllocatorConfig? = nil, agent: BareboneAgentConfig? = nil, image: BareboneImageConfig? = nil, kernel: BareboneKernelKind? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_config_new()!
+        if let connection = connection {
+            frida_barebone_config_set_connection(handle, connection.handle)
+        }
+        if let allocator = allocator {
+            frida_barebone_config_set_allocator(handle, allocator.handle)
+        }
+        if let agent = agent {
+            frida_barebone_config_set_agent(handle, agent.handle)
+        }
+        if let image = image {
+            frida_barebone_config_set_image(handle, image.handle)
+        }
+        if let kernel = kernel {
+            frida_barebone_config_set_kernel(handle, FridaBareboneKernelKind(numericCast(kernel.rawValue)))
+        }
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var connection: BareboneConnectionConfig {
+        let raw = frida_barebone_config_get_connection(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneConnectionConfig(handle: raw)
+    }
+
+    public var allocator: BareboneAllocatorConfig? {
+        guard let raw = frida_barebone_config_get_allocator(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return BareboneAllocatorConfig(handle: raw)
+    }
+
+    public var agent: BareboneAgentConfig? {
+        guard let raw = frida_barebone_config_get_agent(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return BareboneAgentConfig(handle: raw)
+    }
+
+    public var image: BareboneImageConfig? {
+        guard let raw = frida_barebone_config_get_image(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return BareboneImageConfig(handle: raw)
+    }
+
+    public var kernel: BareboneKernelKind {
+        return BareboneKernelKind(rawValue: numericCast(frida_barebone_config_get_kernel(handle).rawValue))!
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneConfig(kernel: \(kernel))"
+    }
+
+    public static func == (lhs: BareboneConfig, rhs: BareboneConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneConnectionConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(host: String? = nil, port: UInt? = nil, pid: UInt? = nil, flavor: BareboneStubFlavor? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_connection_config_new()!
+        if let host = host {
+            frida_barebone_connection_config_set_host(handle, host)
+        }
+        if let port = port {
+            frida_barebone_connection_config_set_port(handle, guint16(port))
+        }
+        if let pid = pid {
+            frida_barebone_connection_config_set_pid(handle, guint(pid))
+        }
+        if let flavor = flavor {
+            frida_barebone_connection_config_set_flavor(handle, FridaBareboneStubFlavor(numericCast(flavor.rawValue)))
+        }
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var host: String {
+        return String(cString: frida_barebone_connection_config_get_host(handle))
+    }
+
+    public var port: UInt {
+        return UInt(frida_barebone_connection_config_get_port(handle))
+    }
+
+    public var pid: UInt {
+        return UInt(frida_barebone_connection_config_get_pid(handle))
+    }
+
+    public var flavor: BareboneStubFlavor {
+        return BareboneStubFlavor(rawValue: numericCast(frida_barebone_connection_config_get_flavor(handle).rawValue))!
+    }
+
+    public var description: String {
+        return "Frida.BareboneConnectionConfig(host: \"\(host)\", port: \(port), pid: \(pid), flavor: \(flavor))"
+    }
+
+    public static func == (lhs: BareboneConnectionConfig, rhs: BareboneConnectionConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public class BareboneAllocatorConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_allocator_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneAllocatorConfig()"
+    }
+
+    public static func == (lhs: BareboneAllocatorConfig, rhs: BareboneAllocatorConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneInvalidAllocatorConfig: BareboneAllocatorConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInvalidAllocatorConfig()"
+    }
+
+}
+
+public final class BarebonePhysicalAllocatorConfig: BareboneAllocatorConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(physicalBase: BareboneMemoryAddress? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_physical_allocator_config_new()!
+        if let physicalBase = physicalBase {
+            frida_barebone_physical_allocator_config_set_physical_base(handle, physicalBase.handle)
+        }
+        super.init(handle: handle)
+    }
+
+    public var physicalBase: BareboneMemoryAddress {
+        let raw = frida_barebone_physical_allocator_config_get_physical_base(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneMemoryAddress(handle: raw)
+    }
+
+    public override var description: String {
+        return "Frida.BarebonePhysicalAllocatorConfig()"
+    }
+
+}
+
+public final class BareboneTargetFunctionsAllocatorConfig: BareboneAllocatorConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(allocArguments: [BareboneCallArgument]? = nil, freeArguments: [BareboneCallArgument]? = nil, allocFunction: BareboneMemoryAddress? = nil, freeFunction: BareboneMemoryAddress? = nil, allocFlags: UInt64? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_target_functions_allocator_config_new()!
+        for element in allocArguments ?? [] {
+            frida_barebone_target_functions_allocator_config_add_alloc_argument(handle, element.handle)
+        }
+        for element in freeArguments ?? [] {
+            frida_barebone_target_functions_allocator_config_add_free_argument(handle, element.handle)
+        }
+        if let allocFunction = allocFunction {
+            frida_barebone_target_functions_allocator_config_set_alloc_function(handle, allocFunction.handle)
+        }
+        if let freeFunction = freeFunction {
+            frida_barebone_target_functions_allocator_config_set_free_function(handle, freeFunction.handle)
+        }
+        if let allocFlags = allocFlags {
+            frida_barebone_target_functions_allocator_config_set_alloc_flags(handle, guint64(allocFlags))
+        }
+        super.init(handle: handle)
+    }
+
+    public var allocFunction: BareboneMemoryAddress {
+        let raw = frida_barebone_target_functions_allocator_config_get_alloc_function(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneMemoryAddress(handle: raw)
+    }
+
+    public var freeFunction: BareboneMemoryAddress {
+        let raw = frida_barebone_target_functions_allocator_config_get_free_function(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneMemoryAddress(handle: raw)
+    }
+
+    public var allocFlags: UInt64 {
+        return UInt64(frida_barebone_target_functions_allocator_config_get_alloc_flags(handle))
+    }
+
+    public func clearAllocArguments() {
+        frida_barebone_target_functions_allocator_config_clear_alloc_arguments(handle)
+    }
+
+    public func addAllocArgument(argument: BareboneCallArgument) {
+        frida_barebone_target_functions_allocator_config_add_alloc_argument(handle, argument.handle)
+    }
+
+    public func clearFreeArguments() {
+        frida_barebone_target_functions_allocator_config_clear_free_arguments(handle)
+    }
+
+    public func addFreeArgument(argument: BareboneCallArgument) {
+        frida_barebone_target_functions_allocator_config_add_free_argument(handle, argument.handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneTargetFunctionsAllocatorConfig(allocFlags: \(allocFlags))"
+    }
+
+}
+
+public final class BareboneCallArgument: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(role: BareboneCallArgumentRole, value: UInt64) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_call_argument_new(FridaBareboneCallArgumentRole(numericCast(role.rawValue)), guint64(value))!
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var role: BareboneCallArgumentRole {
+        return BareboneCallArgumentRole(rawValue: numericCast(frida_barebone_call_argument_get_role(handle).rawValue))!
+    }
+
+    public var value: UInt64 {
+        return UInt64(frida_barebone_call_argument_get_value(handle))
+    }
+
+    public var description: String {
+        return "Frida.BareboneCallArgument(role: \(role), value: \(value))"
+    }
+
+    public static func == (lhs: BareboneCallArgument, rhs: BareboneCallArgument) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneAgentConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(path: String? = nil, transport: BareboneTransportConfig? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_agent_config_new()!
+        if let path = path {
+            frida_barebone_agent_config_set_path(handle, path)
+        }
+        if let transport = transport {
+            frida_barebone_agent_config_set_transport(handle, transport.handle)
+        }
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var path: String {
+        return String(cString: frida_barebone_agent_config_get_path(handle))
+    }
+
+    public var transport: BareboneTransportConfig {
+        let raw = frida_barebone_agent_config_get_transport(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneTransportConfig(handle: raw)
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_agent_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneAgentConfig(path: \"\(path)\")"
+    }
+
+    public static func == (lhs: BareboneAgentConfig, rhs: BareboneAgentConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public class BareboneTransportConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_transport_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneTransportConfig()"
+    }
+
+    public static func == (lhs: BareboneTransportConfig, rhs: BareboneTransportConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneInvalidTransportConfig: BareboneTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInvalidTransportConfig()"
+    }
+
+}
+
+public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(qmp: String? = nil, bus: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_hostlink_transport_config_new()!
+        if let qmp = qmp {
+            frida_barebone_hostlink_transport_config_set_qmp(handle, qmp)
+        }
+        if let bus = bus {
+            frida_barebone_hostlink_transport_config_set_bus(handle, bus)
+        }
+        super.init(handle: handle)
+    }
+
+    public var qmp: String {
+        return String(cString: frida_barebone_hostlink_transport_config_get_qmp(handle))
+    }
+
+    public var bus: String? {
+        if let raw = frida_barebone_hostlink_transport_config_get_bus(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public override var description: String {
+        return "Frida.BareboneHostlinkTransportConfig(qmp: \"\(qmp)\")"
+    }
+
+}
+
+public final class BareboneVsockTransportConfig: BareboneTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(socketPath: String? = nil, port: UInt? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_vsock_transport_config_new()!
+        if let socketPath = socketPath {
+            frida_barebone_vsock_transport_config_set_socket_path(handle, socketPath)
+        }
+        if let port = port {
+            frida_barebone_vsock_transport_config_set_port(handle, guint(port))
+        }
+        super.init(handle: handle)
+    }
+
+    public var socketPath: String {
+        return String(cString: frida_barebone_vsock_transport_config_get_socket_path(handle))
+    }
+
+    public var port: UInt {
+        return UInt(frida_barebone_vsock_transport_config_get_port(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneVsockTransportConfig(socketPath: \"\(socketPath)\", port: \(port))"
+    }
+
+}
+
+public final class BareboneDeviceTransportConfig: BareboneTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(path: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_device_transport_config_new()!
+        if let path = path {
+            frida_barebone_device_transport_config_set_path(handle, path)
+        }
+        super.init(handle: handle)
+    }
+
+    public var path: String {
+        return String(cString: frida_barebone_device_transport_config_get_path(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneDeviceTransportConfig(path: \"\(path)\")"
+    }
+
+}
+
+public final class BareboneSocketTransportConfig: BareboneTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(path: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_socket_transport_config_new()!
+        if let path = path {
+            frida_barebone_socket_transport_config_set_path(handle, path)
+        }
+        super.init(handle: handle)
+    }
+
+    public var path: String {
+        return String(cString: frida_barebone_socket_transport_config_get_path(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneSocketTransportConfig(path: \"\(path)\")"
+    }
+
+}
+
+public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(symbols: [String: UInt64]? = nil, file: String? = nil, base: BareboneMemoryAddress? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_image_config_new()!
+        for (key, element) in symbols ?? [:] {
+            frida_barebone_image_config_add_symbol(handle, key, guint64(element))
+        }
+        if let file = file {
+            frida_barebone_image_config_set_file(handle, file)
+        }
+        if let base = base {
+            frida_barebone_image_config_set_base(handle, base.handle)
+        }
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var file: String {
+        return String(cString: frida_barebone_image_config_get_file(handle))
+    }
+
+    public var base: BareboneMemoryAddress {
+        let raw = frida_barebone_image_config_get_base(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneMemoryAddress(handle: raw)
+    }
+
+    public func clearSymbols() {
+        frida_barebone_image_config_clear_symbols(handle)
+    }
+
+    public func addSymbol(name: String, address: UInt64) {
+        frida_barebone_image_config_add_symbol(handle, name, guint64(address))
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_image_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneImageConfig(file: \"\(file)\")"
+    }
+
+    public static func == (lhs: BareboneImageConfig, rhs: BareboneImageConfig) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public class BareboneMemoryAddress: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var label: String {
+        return String(cString: frida_barebone_memory_address_get_label(handle))
+    }
+
+    public var address: UInt64 {
+        return UInt64(frida_barebone_memory_address_get_address(handle))
+    }
+
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_memory_address_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    public var description: String {
+        return "Frida.BareboneMemoryAddress(label: \"\(label)\", address: \(address))"
+    }
+
+    public static func == (lhs: BareboneMemoryAddress, rhs: BareboneMemoryAddress) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneInvalidMemoryAddress: BareboneMemoryAddress {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(label: String) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_invalid_memory_address_new(label)!
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInvalidMemoryAddress()"
+    }
+
+}
+
+public final class BareboneNonNullMemoryAddress: BareboneMemoryAddress {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(label: String, address: UInt64) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_non_null_memory_address_new(label, guint64(address))!
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneNonNullMemoryAddress()"
+    }
+
+}
+
 public final class ApplicationDetails: CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
 
@@ -1994,9 +2716,12 @@ public final class Session: @unchecked Sendable, CustomStringConvertible, Equata
         }
     }
 
-    public func setupPeerConnection(stunServer: String? = nil) async throws -> Void {
+    public func setupPeerConnection(relays: [Relay]? = nil, stunServer: String? = nil) async throws -> Void {
         return try await fridaAsync(Void.self) { op in
             let options = frida_peer_options_new()!
+            for element in relays ?? [] {
+                frida_peer_options_add_relay(options, element.handle)
+            }
             if let stunServer = stunServer {
                 frida_peer_options_set_stun_server(options, stunServer)
             }
@@ -3168,6 +3893,12 @@ public final class Relay: CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public init(address: String, username: String, password: String, kind: RelayKind) {
+        Runtime.ensureInitialized()
+        let handle = frida_relay_new(address, username, password, FridaRelayKind(numericCast(kind.rawValue)))!
         self.handle = handle
     }
 
