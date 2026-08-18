@@ -9,4 +9,5 @@ glib_sources = files(
   'TlsCertificate.swift',
   'Type.swift',
   'UUID.swift',
+  'Variant.swift',
 )
