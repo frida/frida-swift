@@ -165,6 +165,8 @@ def load_customizations() -> Customizations:
             methods={
                 "add_remote_device": MethodCustomizations(
                     custom_body="device_manager_add_remote_device.swift"),
+                "add_barebone_device": MethodCustomizations(
+                    custom_body="device_manager_add_barebone_device.swift"),
                 **{
                     name: MethodCustomizations(drop=True)
                     for name in [
