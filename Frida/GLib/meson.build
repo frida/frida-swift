@@ -3,6 +3,7 @@ glib_sources = files(
   'File.swift',
   'GLib.swift',
   'IOStream.swift',
+  'MainContext.swift',
   'MainLoop.swift',
   'TimeZone.swift',
   'TlsCertificate.swift',
