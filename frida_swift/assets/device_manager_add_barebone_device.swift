@@ -1,7 +1,7 @@
     @discardableResult
-    public func addBareboneDevice(config: BareboneConfig) async throws -> Device {
+    public func addBareboneDevice(name: String, config: BareboneConfig) async throws -> Device {
         let deviceHandle = try await fridaAsync(OpaquePointer.self) { op in
-            frida_device_manager_add_barebone_device(self.handle, config.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+            frida_device_manager_add_barebone_device(self.handle, name, config.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<OpaquePointer>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
