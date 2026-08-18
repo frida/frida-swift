@@ -67,36 +67,63 @@ extension GLib {
 
         public func send(_ bytes: [UInt8], fileDescriptors: [Int32] = []) throws {
             var payload = bytes
-            try payload.withUnsafeMutableBufferPointer { payload in
-                var vector = GOutputVector(buffer: payload.baseAddress, size: gsize(payload.count))
+            var control = [UInt8](repeating: 0, count: Self.controlLength(for: fileDescriptors))
 
-                var messages: [UnsafeMutablePointer<GSocketControlMessage>?] = []
-                if let rights = Self.rightsMessage(adopting: fileDescriptors) {
-                    messages.append(rights)
-                }
-                defer { messages.forEach { g_object_unref(gpointer($0)) } }
-                defer { messages.forEach { g_object_unref(gpointer($0)) } }
+            let sent: Int = payload.withUnsafeMutableBufferPointer { payload in
+                control.withUnsafeMutableBufferPointer { control in
+                    var vector = iovec(iov_base: payload.baseAddress, iov_len: payload.count)
+                    return withUnsafeMutablePointer(to: &vector) { vector in
+                        var message = msghdr()
+                        message.msg_iov = vector
+                        message.msg_iovlen = 1
 
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                withUnsafeMutablePointer(to: &vector) { vector in
-                    messages.withUnsafeMutableBufferPointer { messages in
-                        g_socket_send_message(handle, nil, vector, 1, messages.baseAddress, gint(messages.count), 0, nil, &rawError)
+                        if !fileDescriptors.isEmpty {
+                            Self.lay(fileDescriptors, into: control)
+                            message.msg_control = UnsafeMutableRawPointer(control.baseAddress)
+                            message.msg_controllen = socklen_t(control.count)
+                        }
+
+                        return sendmsg(fileDescriptor, &message, 0)
                     }
                 }
-                if let rawError {
-                    throw Marshal.takeNativeError(rawError)
-                }
+            }
+            guard sent >= 0 else {
+                throw Frida.Error.transport("Unable to send: \(String(cString: strerror(errno)))")
             }
         }
 
-        private static func rightsMessage(adopting fileDescriptors: [Int32]) -> UnsafeMutablePointer<GSocketControlMessage>? {
-            guard !fileDescriptors.isEmpty else { return nil }
+        private static func lay(_ fileDescriptors: [Int32], into control: UnsafeMutableBufferPointer<UInt8>) {
+            let header = UnsafeMutableRawPointer(control.baseAddress!).assumingMemoryBound(to: cmsghdr.self)
+            header.pointee.cmsg_level = SOL_SOCKET
+            header.pointee.cmsg_type = SCM_RIGHTS
+            header.pointee.cmsg_len = .init(headerLength + payloadLength(for: fileDescriptors))
 
-            var adoptable = fileDescriptors.map { dup($0) }
-            return adoptable.withUnsafeMutableBytes { payload in
-                g_socket_control_message_deserialize(
-                    SOL_SOCKET, SCM_RIGHTS, gsize(payload.count), payload.baseAddress)
+            let payload = UnsafeMutableRawPointer(control.baseAddress!)
+                .advanced(by: headerLength)
+                .assumingMemoryBound(to: Int32.self)
+            for (index, fileDescriptor) in fileDescriptors.enumerated() {
+                payload[index] = fileDescriptor
             }
+        }
+
+        private static func controlLength(for fileDescriptors: [Int32]) -> Int {
+            guard !fileDescriptors.isEmpty else { return 0 }
+            return aligned(headerLength + payloadLength(for: fileDescriptors))
+        }
+
+        private static func payloadLength(for fileDescriptors: [Int32]) -> Int {
+            fileDescriptors.count * MemoryLayout<Int32>.size
+        }
+
+        private static let headerLength = aligned(MemoryLayout<cmsghdr>.size)
+
+        private static func aligned(_ length: Int) -> Int {
+            #if canImport(Darwin)
+            let boundary = MemoryLayout<UInt32>.size
+            #else
+            let boundary = MemoryLayout<Int>.size
+            #endif
+            return (length + boundary - 1) & ~(boundary - 1)
         }
 
         public func receive(upTo count: Int) throws -> [UInt8] {
