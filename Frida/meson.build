@@ -18,6 +18,7 @@ sources = [
   'RpcFunction.swift',
   'Runtime.swift',
   'SignalConnection.swift',
+  'Version.swift',
 ]
 
 subdir('GLib')
