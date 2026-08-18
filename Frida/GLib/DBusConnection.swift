@@ -32,10 +32,10 @@ extension GLib {
             let dbus = try await fridaAsync(DBusConnection.self) { op in
                 var flags = role.flags
                 if !startingMessageProcessing {
-                    flags.insert(.G_DBUS_CONNECTION_FLAGS_DELAY_MESSAGE_PROCESSING)
+                    flags |= DBusConnectionFlag.delayMessageProcessing
                 }
 
-                g_dbus_connection_new(stream, role.guid, flags, nil, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
+                g_dbus_connection_new(stream, role.guid, glibFlags(flags), nil, op.cancellable, { sourcePtr, asyncResultPtr, userDataPtr in
                     let op = InternalOp<DBusConnection>.takeRetained(from: userDataPtr!)
 
                     var rawError: UnsafeMutablePointer<GError>? = nil
@@ -119,7 +119,7 @@ extension GLib {
                     method,
                     parameters?.handle,
                     nil,
-                    [],
+                    glibFlags(0),
                     -1,
                     list,
                     op.cancellable,
@@ -153,12 +153,12 @@ extension GLib {
         case client
         case server(guid: String)
 
-        var flags: GDBusConnectionFlags {
+        var flags: UInt32 {
             switch self {
             case .client:
-                return .G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_CLIENT
+                return DBusConnectionFlag.authenticationClient
             case .server:
-                return [.G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_SERVER, .G_DBUS_CONNECTION_FLAGS_AUTHENTICATION_ALLOW_ANONYMOUS]
+                return DBusConnectionFlag.authenticationServer | DBusConnectionFlag.authenticationAllowAnonymous
             }
         }
 
@@ -214,6 +214,17 @@ extension GLib {
                 invocation, g_io_error_quark(), gint(G_IO_ERROR_FAILED.rawValue), message)
         }
     }
+}
+
+private enum DBusConnectionFlag {
+    static let authenticationClient: UInt32 = 1 << 0
+    static let authenticationServer: UInt32 = 1 << 1
+    static let authenticationAllowAnonymous: UInt32 = 1 << 2
+    static let delayMessageProcessing: UInt32 = 1 << 4
+}
+
+private func glibFlags<Flags>(_ value: UInt32) -> Flags {
+    unsafeBitCast(value, to: Flags.self)
 }
 
 private final class DBusRegistration: @unchecked Sendable {
