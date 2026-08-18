@@ -8,7 +8,7 @@ from frida_bindgen_core.naming import to_camel_case, to_snake_case
 from .model import (Enumeration, Method, Model, ObjectType, Parameter,
                     list_element_type, options_object_type, swift_ident,
                     swift_input_kind, swift_return_kind,
-                    swift_return_kind_async, swift_sync_input)
+                    swift_return_kind_async)
 
 _ASSETS_DIR = Path(__file__).parent / "assets"
 
@@ -266,7 +266,7 @@ def generate_public_init(otype: ObjectType, model: Model) -> str:
         sig = []
         args = []
         for param in ctor.parameters:
-            kind = swift_sync_input(param.type, model)
+            kind = swift_input_kind(param.type, model)
             if kind is None:
                 return ""
             tag, swift_type = kind
@@ -711,7 +711,7 @@ def generate_sync_method(method: Method, model: Model) -> str:
     call_args: List[str] = ["handle"]
     post: List[str] = []
     for p in method.swift_input_parameters:
-        sig_parts.append(f"{p.swift_name}: {swift_sync_input(p.type, model)[1]}")
+        sig_parts.append(f"{p.swift_name}: {swift_input_kind(p.type, model)[1]}")
         arg, pre_lines, post_lines = marshal_input(p, model)
         call_args.append(arg)
         pre.extend(pre_lines)
@@ -835,7 +835,7 @@ def classify_option_setter(setter: Method, model: Model, target: str = "options"
 
 
 def _mapping_setter(setter, arg, param, model, target="options"):
-    kind = swift_sync_input(param.type, model)
+    kind = swift_input_kind(param.type, model)
     if kind is None:
         return None
     tag, swift_type = kind
@@ -854,7 +854,7 @@ def _mapping_setter(setter, arg, param, model, target="options"):
 
 
 def _scalar_setter(setter, arg, param, model, target="options"):
-    kind = swift_sync_input(param.type, model)
+    kind = swift_input_kind(param.type, model)
     if kind is None:
         return None
     call = setter.c_identifier
@@ -894,7 +894,7 @@ def _scalar_setter(setter, arg, param, model, target="options"):
 
 
 def _adder_setter(setter, arg, param, model, target="options"):
-    kind = swift_sync_input(param.type, model)
+    kind = swift_input_kind(param.type, model)
     if kind is None:
         return None
     tag, swift_type = kind
@@ -923,10 +923,7 @@ def _adder_setter(setter, arg, param, model, target="options"):
 def marshal_input(param: Parameter, model: Model):
     """Return (call_arg, pre_lines, post_lines) for an input parameter."""
     name = param.swift_name
-    classified = swift_input_kind(param.type, model)
-    if classified is None:
-        return f"{name}.handle", [], []
-    kind, _ = classified
+    kind, _ = swift_input_kind(param.type, model)
     if kind == "string":
         return name, [], []
     if kind == "scalar":
@@ -943,6 +940,8 @@ def marshal_input(param: Parameter, model: Model):
         return (raw,
                 [f"let {raw} = g_variant_ref_sink(Marshal.variantFromValue({name}))"],
                 [f"g_variant_unref({raw})"])
+    if kind == "object":
+        return f"{name}.handle", [], []
     raise AssertionError(kind)
 
 

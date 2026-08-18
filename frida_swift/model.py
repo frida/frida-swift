@@ -273,7 +273,7 @@ class Method(core.Method):
             kind = swift_return_kind(rv.type, model)
             if kind is None or kind[0] not in ("void", "strv"):
                 return False
-        return all(swift_sync_input(p.type, model) is not None for p in self.swift_input_parameters)
+        return all(swift_input_kind(p.type, model) is not None for p in self.swift_input_parameters)
 
     @cached_property
     def swift_name(self) -> str:
@@ -453,15 +453,7 @@ def swift_input_kind(type: core.Type, model):
     enum = model.enumerations.get(n.split(".")[-1])
     if enum is not None and not enum.drop:
         return ("enum", enum.swift_name)
-    return None
-
-
-def swift_sync_input(type: core.Type, model):
-    """Classify a sync-method input; like swift_input_kind but also objects."""
-    kind = swift_input_kind(type, model)
-    if kind is not None:
-        return kind
-    obj = model.swift_class_for(type.name)
+    obj = model.swift_class_for(n)
     if obj is not None and obj.emit and not obj.is_frida_list and not obj.is_interface:
         return ("object", obj.swift_name)
     return None
