@@ -463,55 +463,6 @@ public final class DeviceManager: @unchecked Sendable, CustomStringConvertible, 
         }
     }
 
-    public func removeRemoteDevice(address: String) async throws -> Void {
-        return try await fridaAsync(Void.self) { op in
-            frida_device_manager_remove_remote_device(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in
-                let op = InternalOp<Void>.takeRetained(from: userData!)
-
-                var rawError: UnsafeMutablePointer<GError>? = nil
-                frida_device_manager_remove_remote_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
-
-                if let rawError {
-                    op.resumeFailure(Marshal.takeNativeError(rawError))
-                    return
-                }
-
-                op.resumeSuccess(())
-            }, op.userData)
-        }
-    }
-
-    public var description: String {
-        return "Frida.DeviceManager()"
-    }
-
-    private let store = DeviceStore()
-
-    public typealias DeviceSnapshots = AsyncStream<[Device]>
-    public typealias DeviceChanges = AsyncStream<DeviceChange>
-
-    public enum DeviceChange: Sendable {
-        case appeared(Device)
-        case disappeared(Device)
-    }
-
-    public convenience init() {
-        Runtime.ensureInitialized()
-        self.init(handle: frida_device_manager_new())
-    }
-
-    public func currentDevices() async -> [Device] {
-        await store.snapshot()
-    }
-
-    public func snapshots() async -> DeviceSnapshots {
-        await store.stream()
-    }
-
-    public func changes() async -> DeviceChanges {
-        await store.changeStream()
-    }
-
     @discardableResult
     public func addRemoteDevice(
         address: String,
@@ -562,6 +513,94 @@ public final class DeviceManager: @unchecked Sendable, CustomStringConvertible, 
         }
 
         return await store.deviceForHandle(deviceHandle)
+    }
+
+    public func removeRemoteDevice(address: String) async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_manager_remove_remote_device(self.handle, address, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_device_manager_remove_remote_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+        }
+    }
+
+    @discardableResult
+    public func addBareboneDevice(config: BareboneConfig) async throws -> Device {
+        let deviceHandle = try await fridaAsync(OpaquePointer.self) { op in
+            frida_device_manager_add_barebone_device(self.handle, config.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<OpaquePointer>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawDeviceHandle = frida_device_manager_add_barebone_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(rawDeviceHandle!)
+            }, op.userData)
+        }
+
+        return await store.deviceForHandle(deviceHandle)
+    }
+
+    public func removeBareboneDevice(device: Device) async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            frida_device_manager_remove_barebone_device(self.handle, device.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_device_manager_remove_barebone_device_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+        }
+    }
+
+    public var description: String {
+        return "Frida.DeviceManager()"
+    }
+
+    private let store = DeviceStore()
+
+    public typealias DeviceSnapshots = AsyncStream<[Device]>
+    public typealias DeviceChanges = AsyncStream<DeviceChange>
+
+    public enum DeviceChange: Sendable {
+        case appeared(Device)
+        case disappeared(Device)
+    }
+
+    public convenience init() {
+        Runtime.ensureInitialized()
+        self.init(handle: frida_device_manager_new())
+    }
+
+    public func currentDevices() async -> [Device] {
+        await store.snapshot()
+    }
+
+    public func snapshots() async -> DeviceSnapshots {
+        await store.stream()
+    }
+
+    public func changes() async -> DeviceChanges {
+        await store.changeStream()
     }
 
     private func performInitialDiscovery() async {
