@@ -5,6 +5,7 @@ glib_sources = files(
   'IOStream.swift',
   'MainContext.swift',
   'MainLoop.swift',
+  'Socket.swift',
   'TimeZone.swift',
   'TlsCertificate.swift',
   'Type.swift',
