@@ -149,7 +149,9 @@ def generate_class(otype: ObjectType, model: Model) -> str:
         members.append(apply_override(generate_getter(method, model), method.property_name, inherited))
 
     for method in otype.emitted_async_methods:
-        members.append(apply_override(generate_async_method(otype, method, model), method.swift_name, inherited))
+        body = read_asset(method.custom_body) if method.custom_body is not None \
+            else generate_async_method(otype, method, model)
+        members.append(apply_override(body, method.swift_name, inherited))
 
     for method in otype.emitted_custom_methods:
         members.append(apply_override(generate_custom_method(method, model), method.swift_name, inherited))

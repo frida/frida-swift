@@ -258,6 +258,11 @@ class Method(core.Method):
         return c.param_typings if c is not None else None
 
     @property
+    def custom_body(self) -> Optional[str]:
+        c = self.customizations
+        return c.custom_body if c is not None else None
+
+    @property
     def is_swift_custom(self) -> bool:
         return not self.dropped and self.custom_logic is not None
 
@@ -572,6 +577,9 @@ class MethodCustomizations:
     # marshals the rest. Mirrors frida-node's declarative post/narrowcast.
     param_typings: Optional[List[str]] = None
     custom_logic: Optional[str] = None
+    # Emit the named asset in place of the generated method, keeping the method
+    # where the generated one would have been.
+    custom_body: Optional[str] = None
 
 
 @dataclass

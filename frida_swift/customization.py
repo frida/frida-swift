@@ -163,12 +163,16 @@ def load_customizations() -> Customizations:
                 "        }"
             ),
             methods={
-                name: MethodCustomizations(drop=True)
-                for name in [
-                    "add_remote_device", "enumerate_devices",
-                    "get_device_by_id", "get_device_by_type",
-                    "find_device_by_id", "find_device_by_type",
-                ]
+                "add_remote_device": MethodCustomizations(
+                    custom_body="device_manager_add_remote_device.swift"),
+                **{
+                    name: MethodCustomizations(drop=True)
+                    for name in [
+                        "enumerate_devices",
+                        "get_device_by_id", "get_device_by_type",
+                        "find_device_by_id", "find_device_by_type",
+                    ]
+                },
             },
         ),
         "PortalService": ObjectTypeCustomizations(
