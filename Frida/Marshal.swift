@@ -238,6 +238,21 @@ class Marshal {
         return result
     }
 
+    static func variantFromIcon(_ icon: Icon) -> OpaquePointer {
+        switch icon {
+        case .png(let data):
+            var bytes = data
+            return bytes.withUnsafeMutableBufferPointer { image in
+                frida_icon_from_png(image.baseAddress, gint(image.count), 0, 0)
+            }
+        case .rgba(let width, let height, let pixels):
+            var bytes = pixels
+            return bytes.withUnsafeMutableBufferPointer { image in
+                frida_icon_from_rgba(image.baseAddress, gint(image.count), guint16(width), guint16(height))
+            }
+        }
+    }
+
     static func iconFromVarDict(_ dict: [String: Any]) -> Icon {
         let formatString = dict["format"] as! String
         let bytes = dict["image"] as! [UInt8]
