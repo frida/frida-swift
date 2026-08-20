@@ -68,17 +68,19 @@ public enum DeviceType: UInt32, Codable, CustomStringConvertible {
 public enum BareboneKernelKind: UInt32, Codable, CustomStringConvertible {
     case auto = 0
     case bare = 1
-    case xnu = 2
-    case win9x = 3
-    case winnt = 4
+    case win9x = 2
+    case winnt = 3
+    case xnu = 4
+    case linux = 5
 
     public var description: String {
         switch self {
         case .auto: return "auto"
         case .bare: return "bare"
-        case .xnu: return "xnu"
         case .win9x: return "win9x"
         case .winnt: return "winnt"
+        case .xnu: return "xnu"
+        case .linux: return "linux"
         }
     }
 }
