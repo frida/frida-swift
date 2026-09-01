@@ -36,6 +36,15 @@ extension GLib {
             })
         }
 
+        public convenience init(bytes: [UInt8]) {
+            var payload = bytes
+            let elementType = g_variant_type_new("y")
+            defer { g_variant_type_free(elementType) }
+            self.init(adopting: payload.withUnsafeMutableBufferPointer { payload in
+                g_variant_new_fixed_array(elementType, payload.baseAddress, gsize(payload.count), 1)
+            })
+        }
+
         public convenience init(tuple children: [Variant]) {
             var handles: [OpaquePointer?] = children.map(\.handle)
             self.init(adopting: handles.withUnsafeMutableBufferPointer { children in
@@ -53,6 +62,10 @@ extension GLib {
 
         public var int32: Int32? {
             isOfType("i") ? g_variant_get_int32(handle) : nil
+        }
+
+        public var uint64: UInt64? {
+            isOfType("t") ? g_variant_get_uint64(handle) : nil
         }
 
         public var string: String? {
