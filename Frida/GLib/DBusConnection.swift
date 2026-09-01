@@ -1,6 +1,5 @@
 internal import FridaCore
 
-#if !os(Windows)
 
 extension GLib {
     public final class DBusConnection: @unchecked Sendable {
@@ -104,6 +103,39 @@ extension GLib {
             parameters: Variant? = nil,
             fileDescriptors: [Int32] = []
         ) async throws -> Variant {
+            #if os(Windows)
+            try await fridaAsync(Variant.self) { op in
+                g_dbus_connection_call(
+                    self.handle,
+                    nil,
+                    path,
+                    interface,
+                    method,
+                    parameters?.handle,
+                    nil,
+                    glibFlags(0),
+                    -1,
+                    op.cancellable,
+                    { sourcePtr, asyncResultPtr, userDataPtr in
+                        let op = InternalOp<Variant>.takeRetained(from: userDataPtr!)
+
+                        var rawError: UnsafeMutablePointer<GError>? = nil
+                        let reply = g_dbus_connection_call_finish(
+                            OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                        if let rawError {
+                            op.resumeFailure(Marshal.takeNativeError(rawError))
+                            return
+                        }
+
+                        let result = Variant(borrowing: reply!)
+                        g_variant_unref(reply)
+                        op.resumeSuccess(result)
+                    },
+                    op.userData
+                )
+            }
+            #else
             try await fridaAsync(Variant.self) { op in
                 let list = g_unix_fd_list_new()
                 defer { g_object_unref(gpointer(list)) }
@@ -142,6 +174,7 @@ extension GLib {
                     op.userData
                 )
             }
+            #endif
         }
 
         public func close() {
@@ -191,6 +224,7 @@ extension GLib {
             self.invocation = invocation
         }
 
+        #if !os(Windows)
         public func fileDescriptor(at index: Int32) throws -> Int32 {
             let message = g_dbus_method_invocation_get_message(invocation)
             guard let list = g_dbus_message_get_unix_fd_list(message) else {
@@ -204,6 +238,7 @@ extension GLib {
             }
             return fileDescriptor
         }
+        #endif
 
         public func complete() {
             g_dbus_method_invocation_return_value(invocation, nil)
@@ -276,4 +311,3 @@ private final class DBusRegistration: @unchecked Sendable {
     }
 }
 
-#endif

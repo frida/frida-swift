@@ -1,11 +1,11 @@
 internal import FridaCore
 
-#if !os(Windows)
-
 #if canImport(Darwin)
 import Darwin
-#else
+#elseif canImport(Glibc)
 import Glibc
+#elseif canImport(WinSDK)
+import WinSDK
 #endif
 
 extension GLib {
@@ -47,6 +47,65 @@ extension GLib {
             return socket
         }
 
+        #if os(Windows)
+        public static func pair() throws -> (Socket, Socket) {
+            let directory = String(cString: g_get_tmp_dir())
+            let name = g_uuid_string_random()!
+            defer { g_free(name) }
+            let path = "\(directory)\\frida-\(String(cString: name))"
+
+            let address = g_unix_socket_address_new(path)!
+            defer { g_object_unref(gpointer(address)) }
+            let socketAddress = UnsafeMutableRawPointer(address).assumingMemoryBound(to: GSocketAddress.self)
+
+            var rawError: UnsafeMutablePointer<GError>? = nil
+            let listener = g_socket_new(G_SOCKET_FAMILY_UNIX, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, &rawError)
+            if let rawError {
+                throw Marshal.takeNativeError(rawError)
+            }
+            defer {
+                g_socket_close(listener, nil)
+                g_object_unref(gpointer(listener))
+                path.withCString { _ = remove($0) }
+            }
+
+            g_socket_bind(listener, socketAddress, gboolean(1), &rawError)
+            if let rawError {
+                throw Marshal.takeNativeError(rawError)
+            }
+            g_socket_listen(listener, &rawError)
+            if let rawError {
+                throw Marshal.takeNativeError(rawError)
+            }
+
+            let client = g_socket_new(G_SOCKET_FAMILY_UNIX, G_SOCKET_TYPE_STREAM, G_SOCKET_PROTOCOL_DEFAULT, &rawError)
+            if let rawError {
+                throw Marshal.takeNativeError(rawError)
+            }
+            g_socket_connect(client, socketAddress, nil, &rawError)
+            if let rawError {
+                g_object_unref(gpointer(client))
+                throw Marshal.takeNativeError(rawError)
+            }
+
+            let server = g_socket_accept(listener, nil, &rawError)
+            if let rawError {
+                g_object_unref(gpointer(client))
+                throw Marshal.takeNativeError(rawError)
+            }
+
+            return (Socket(handle: client!), Socket(handle: server!))
+        }
+
+        public func protocolInfo(forProcessID processID: UInt32) throws -> [UInt8] {
+            var info = WSAPROTOCOL_INFOW()
+            let socket = SOCKET(bitPattern: Int64(g_socket_get_fd(handle)))
+            guard WSADuplicateSocketW(socket, DWORD(processID), &info) == 0 else {
+                throw Frida.Error.transport("Unable to duplicate socket: \(WSAGetLastError())")
+            }
+            return withUnsafeBytes(of: &info) { Array($0) }
+        }
+        #else
         public static func pair() throws -> (Socket, Socket) {
             var descriptors: [Int32] = [-1, -1]
             guard socketpair(AF_UNIX, streamSocketTypeValue, 0, &descriptors) == 0 else {
@@ -60,11 +119,24 @@ extension GLib {
         #else
         private static let streamSocketTypeValue = Int32(SOCK_STREAM.rawValue)
         #endif
+        #endif
 
         public var fileDescriptor: Int32 {
             g_socket_get_fd(handle)
         }
 
+        #if os(Windows)
+        public func send(_ bytes: [UInt8], fileDescriptors: [Int32] = []) throws {
+            var payload = bytes
+            var rawError: UnsafeMutablePointer<GError>? = nil
+            payload.withUnsafeBytes { payload in
+                _ = g_socket_send(handle, payload.baseAddress, gsize(payload.count), nil, &rawError)
+            }
+            if let rawError {
+                throw Marshal.takeNativeError(rawError)
+            }
+        }
+        #else
         public func send(_ bytes: [UInt8], fileDescriptors: [Int32] = []) throws {
             var payload = bytes
             var control = [UInt8](repeating: 0, count: Self.controlLength(for: fileDescriptors))
@@ -125,6 +197,7 @@ extension GLib {
             #endif
             return (length + boundary - 1) & ~(boundary - 1)
         }
+        #endif
 
         public func receive(upTo count: Int) throws -> [UInt8] {
             var buffer = [UInt8](repeating: 0, count: count)
@@ -144,4 +217,3 @@ extension GLib {
     }
 }
 
-#endif
