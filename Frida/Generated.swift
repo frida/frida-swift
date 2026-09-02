@@ -1874,7 +1874,7 @@ public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
         super.init(handle: handle)
     }
 
-    public init(qmp: String? = nil, bus: String? = nil, ecam: UInt64? = nil) {
+    public init(qmp: String? = nil, bus: String? = nil, ecam: UInt64? = nil, mmio: UInt64? = nil, irq: UInt? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_transport_config_new()!
         if let qmp = qmp {
@@ -1885,6 +1885,12 @@ public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
         }
         if let ecam = ecam {
             frida_barebone_hostlink_transport_config_set_ecam(handle, guint64(ecam))
+        }
+        if let mmio = mmio {
+            frida_barebone_hostlink_transport_config_set_mmio(handle, guint64(mmio))
+        }
+        if let irq = irq {
+            frida_barebone_hostlink_transport_config_set_irq(handle, guint(irq))
         }
         super.init(handle: handle)
     }
@@ -1904,8 +1910,16 @@ public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
         return UInt64(frida_barebone_hostlink_transport_config_get_ecam(handle))
     }
 
+    public var mmio: UInt64 {
+        return UInt64(frida_barebone_hostlink_transport_config_get_mmio(handle))
+    }
+
+    public var irq: UInt {
+        return UInt(frida_barebone_hostlink_transport_config_get_irq(handle))
+    }
+
     public override var description: String {
-        return "Frida.BareboneHostlinkTransportConfig(qmp: \"\(qmp)\", ecam: \(ecam))"
+        return "Frida.BareboneHostlinkTransportConfig(qmp: \"\(qmp)\", ecam: \(ecam), mmio: \(mmio), irq: \(irq))"
     }
 
 }
