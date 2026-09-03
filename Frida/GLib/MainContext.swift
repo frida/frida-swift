@@ -2,7 +2,10 @@ internal import FridaCore
 
 extension GLib {
     public final class MainContext: @unchecked Sendable {
-        public static let frida = MainContext(handle: frida_get_main_context())
+        public static let frida: MainContext = {
+            Runtime.ensureInitialized()
+            return MainContext(handle: frida_get_main_context() ?? g_main_context_ref_thread_default())
+        }()
 
         private let handle: OpaquePointer
 
