@@ -538,11 +538,16 @@ public final class DeviceManager: @unchecked Sendable, CustomStringConvertible, 
     @discardableResult
     public func addBareboneDevice(
         config: BareboneConfig,
+        id: String? = nil,
         name: String? = nil,
         icon: Icon? = nil
     ) async throws -> Device {
         let options = frida_barebone_device_options_new()
         defer { g_object_unref(gpointer(options)) }
+
+        if let id {
+            frida_barebone_device_options_set_id(options, id)
+        }
 
         if let name {
             frida_barebone_device_options_set_name(options, name)
