@@ -1463,7 +1463,7 @@ public final class BareboneConfig: CustomStringConvertible, Equatable, Hashable 
         self.handle = handle
     }
 
-    public init(connection: BareboneConnectionConfig? = nil, allocator: BareboneAllocatorConfig? = nil, agent: BareboneAgentConfig? = nil, image: BareboneImageConfig? = nil, kernel: BareboneKernelKind? = nil) {
+    public convenience init(connection: BareboneConnectionConfig? = nil, allocator: BareboneAllocatorConfig? = nil, agent: BareboneAgentConfig? = nil, image: BareboneImageConfig? = nil, kernel: BareboneKernelKind? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_config_new()!
         if let connection = connection {
@@ -1481,7 +1481,7 @@ public final class BareboneConfig: CustomStringConvertible, Equatable, Hashable 
         if let kernel = kernel {
             frida_barebone_config_set_kernel(handle, FridaBareboneKernelKind(numericCast(kernel.rawValue)))
         }
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {
@@ -1550,7 +1550,7 @@ public final class BareboneConnectionConfig: CustomStringConvertible, Equatable,
         self.handle = handle
     }
 
-    public init(host: String? = nil, port: UInt? = nil, pid: UInt? = nil, flavor: BareboneStubFlavor? = nil) {
+    public convenience init(host: String? = nil, port: UInt? = nil, pid: UInt? = nil, flavor: BareboneStubFlavor? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_connection_config_new()!
         if let host = host {
@@ -1565,7 +1565,7 @@ public final class BareboneConnectionConfig: CustomStringConvertible, Equatable,
         if let flavor = flavor {
             frida_barebone_connection_config_set_flavor(handle, FridaBareboneStubFlavor(numericCast(flavor.rawValue)))
         }
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {
@@ -1639,10 +1639,10 @@ public final class BareboneInvalidAllocatorConfig: BareboneAllocatorConfig {
         super.init(handle: handle)
     }
 
-    public init() {
+    public convenience init() {
         Runtime.ensureInitialized()
         let handle = frida_barebone_invalid_allocator_config_new()!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -1657,13 +1657,13 @@ public final class BarebonePhysicalAllocatorConfig: BareboneAllocatorConfig {
         super.init(handle: handle)
     }
 
-    public init(physicalBase: BareboneMemoryAddress? = nil) {
+    public convenience init(physicalBase: BareboneMemoryAddress? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_physical_allocator_config_new()!
         if let physicalBase = physicalBase {
             frida_barebone_physical_allocator_config_set_physical_base(handle, physicalBase.handle)
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var physicalBase: BareboneMemoryAddress {
@@ -1684,7 +1684,7 @@ public final class BareboneTargetFunctionsAllocatorConfig: BareboneAllocatorConf
         super.init(handle: handle)
     }
 
-    public init(allocArguments: [BareboneCallArgument]? = nil, freeArguments: [BareboneCallArgument]? = nil, allocFunction: BareboneMemoryAddress? = nil, freeFunction: BareboneMemoryAddress? = nil, allocFlags: UInt64? = nil) {
+    public convenience init(allocArguments: [BareboneCallArgument]? = nil, freeArguments: [BareboneCallArgument]? = nil, allocFunction: BareboneMemoryAddress? = nil, freeFunction: BareboneMemoryAddress? = nil, allocFlags: UInt64? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_target_functions_allocator_config_new()!
         for element in allocArguments ?? [] {
@@ -1702,7 +1702,7 @@ public final class BareboneTargetFunctionsAllocatorConfig: BareboneAllocatorConf
         if let allocFlags = allocFlags {
             frida_barebone_target_functions_allocator_config_set_alloc_flags(handle, guint64(allocFlags))
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var allocFunction: BareboneMemoryAddress {
@@ -1750,10 +1750,10 @@ public final class BareboneCallArgument: CustomStringConvertible, Equatable, Has
         self.handle = handle
     }
 
-    public init(role: BareboneCallArgumentRole, value: UInt64) {
+    public convenience init(role: BareboneCallArgumentRole, value: UInt64) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_call_argument_new(FridaBareboneCallArgumentRole(numericCast(role.rawValue)), guint64(value))!
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {
@@ -1819,10 +1819,10 @@ public final class BareboneInvalidAgentConfig: BareboneAgentConfig {
         super.init(handle: handle)
     }
 
-    public init() {
+    public convenience init() {
         Runtime.ensureInitialized()
         let handle = frida_barebone_invalid_agent_config_new()!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -1837,7 +1837,7 @@ public final class BareboneInjectedAgentConfig: BareboneAgentConfig {
         super.init(handle: handle)
     }
 
-    public init(image: [UInt8]? = nil, transport: BareboneInjectingTransportConfig? = nil) {
+    public convenience init(image: [UInt8]? = nil, transport: BareboneInjectingTransportConfig? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_injected_agent_config_new()!
         let rawImage = Marshal.bytesFromArray(image)
@@ -1848,7 +1848,7 @@ public final class BareboneInjectedAgentConfig: BareboneAgentConfig {
         if let transport = transport {
             frida_barebone_injected_agent_config_set_transport(handle, transport.handle)
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public static func fromBytes(image: [UInt8], transport: BareboneInjectingTransportConfig) -> BareboneInjectedAgentConfig {
@@ -1891,10 +1891,10 @@ public final class BareboneResidentAgentConfig: BareboneAgentConfig {
         super.init(handle: handle)
     }
 
-    public init(transport: BareboneResidentTransportConfig) {
+    public convenience init(transport: BareboneResidentTransportConfig) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_resident_agent_config_new(transport.handle)!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var transport: BareboneResidentTransportConfig {
@@ -1971,7 +1971,7 @@ public final class BareboneHostlinkTransportConfig: BareboneInjectingTransportCo
         super.init(handle: handle)
     }
 
-    public init(qmp: String? = nil, bus: String? = nil, fabric: BareboneHostlinkFabric? = nil) {
+    public convenience init(qmp: String? = nil, bus: String? = nil, fabric: BareboneHostlinkFabric? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_transport_config_new()!
         if let qmp = qmp {
@@ -1983,7 +1983,7 @@ public final class BareboneHostlinkTransportConfig: BareboneInjectingTransportCo
         if let fabric = fabric {
             frida_barebone_hostlink_transport_config_set_fabric(handle, fabric.handle)
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var qmp: String {
@@ -2039,10 +2039,10 @@ public final class BareboneHostlinkEcamFabric: BareboneHostlinkFabric {
         super.init(handle: handle)
     }
 
-    public init(ecam: UInt64) {
+    public convenience init(ecam: UInt64) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_ecam_fabric_new(guint64(ecam))!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var ecam: UInt64 {
@@ -2061,10 +2061,10 @@ public final class BareboneHostlinkPortsFabric: BareboneHostlinkFabric {
         super.init(handle: handle)
     }
 
-    public init() {
+    public convenience init() {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_ports_fabric_new()!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -2079,10 +2079,10 @@ public final class BareboneHostlinkMmioFabric: BareboneHostlinkFabric {
         super.init(handle: handle)
     }
 
-    public init() {
+    public convenience init() {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_mmio_fabric_new()!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -2097,7 +2097,7 @@ public final class BareboneVsockTransportConfig: BareboneInjectingTransportConfi
         super.init(handle: handle)
     }
 
-    public init(socketPath: String? = nil, port: UInt? = nil) {
+    public convenience init(socketPath: String? = nil, port: UInt? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_vsock_transport_config_new()!
         if let socketPath = socketPath {
@@ -2106,7 +2106,7 @@ public final class BareboneVsockTransportConfig: BareboneInjectingTransportConfi
         if let port = port {
             frida_barebone_vsock_transport_config_set_port(handle, guint(port))
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var socketPath: String {
@@ -2129,13 +2129,13 @@ public final class BareboneDeviceTransportConfig: BareboneResidentTransportConfi
         super.init(handle: handle)
     }
 
-    public init(path: String? = nil) {
+    public convenience init(path: String? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_device_transport_config_new()!
         if let path = path {
             frida_barebone_device_transport_config_set_path(handle, path)
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var path: String {
@@ -2154,13 +2154,13 @@ public final class BareboneSocketTransportConfig: BareboneResidentTransportConfi
         super.init(handle: handle)
     }
 
-    public init(path: String? = nil) {
+    public convenience init(path: String? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_socket_transport_config_new()!
         if let path = path {
             frida_barebone_socket_transport_config_set_path(handle, path)
         }
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public var path: String {
@@ -2180,7 +2180,7 @@ public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hash
         self.handle = handle
     }
 
-    public init(symbols: [String: UInt64]? = nil, file: String? = nil, base: BareboneMemoryAddress? = nil) {
+    public convenience init(symbols: [String: UInt64]? = nil, file: String? = nil, base: BareboneMemoryAddress? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_image_config_new()!
         for (key, element) in symbols ?? [:] {
@@ -2192,7 +2192,7 @@ public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hash
         if let base = base {
             frida_barebone_image_config_set_base(handle, base.handle)
         }
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {
@@ -2284,10 +2284,10 @@ public final class BareboneInvalidMemoryAddress: BareboneMemoryAddress {
         super.init(handle: handle)
     }
 
-    public init(label: String) {
+    public convenience init(label: String) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_invalid_memory_address_new(label)!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -2302,10 +2302,10 @@ public final class BareboneNonNullMemoryAddress: BareboneMemoryAddress {
         super.init(handle: handle)
     }
 
-    public init(label: String, address: UInt64) {
+    public convenience init(label: String, address: UInt64) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_non_null_memory_address_new(label, guint64(address))!
-        super.init(handle: handle)
+        self.init(handle: handle)
     }
 
     public override var description: String {
@@ -4148,10 +4148,10 @@ public final class LanguageServer: @unchecked Sendable, CustomStringConvertible,
         connectSignal(instance: self, handle: handle, signal: "message", handler: onMessage)
     }
 
-    public init(projectRoot: String) {
+    public convenience init(projectRoot: String) {
         Runtime.ensureInitialized()
         let handle = frida_language_server_new(projectRoot)!
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {
@@ -4235,10 +4235,10 @@ public final class Relay: CustomStringConvertible, Equatable, Hashable {
         self.handle = handle
     }
 
-    public init(address: String, username: String, password: String, kind: RelayKind) {
+    public convenience init(address: String, username: String, password: String, kind: RelayKind) {
         Runtime.ensureInitialized()
         let handle = frida_relay_new(address, username, password, FridaRelayKind(numericCast(kind.rawValue)))!
-        self.handle = handle
+        self.init(handle: handle)
     }
 
     deinit {

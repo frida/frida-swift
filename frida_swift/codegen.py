@@ -282,16 +282,13 @@ def generate_constructor_init(otype: ObjectType, ctor, model: Model) -> str:
         body = [f"let handle = {ctor.c_identifier}()!"] + setters
 
     handle = "handle!" if ctor.throws else "handle"
-    if otype.emitted_parent is not None:
-        body.append(f"super.init(handle: {handle})")
-    else:
-        body.append(f"self.handle = {handle}")
+    body.append(f"self.init(handle: {handle})")
 
     lines = "\n".join(f"        {line}" for line in body)
     throws_kw = " throws" if ctor.throws else ""
 
     return f"""
-    public init({', '.join(sig)}){throws_kw} {{
+    public convenience init({', '.join(sig)}){throws_kw} {{
         Runtime.ensureInitialized()
 {lines}
     }}
