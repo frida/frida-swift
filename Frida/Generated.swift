@@ -1639,6 +1639,12 @@ public final class BareboneInvalidAllocatorConfig: BareboneAllocatorConfig {
         super.init(handle: handle)
     }
 
+    public init() {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_invalid_allocator_config_new()!
+        super.init(handle: handle)
+    }
+
     public override var description: String {
         return "Frida.BareboneInvalidAllocatorConfig()"
     }
@@ -1810,6 +1816,12 @@ public class BareboneAgentConfig: CustomStringConvertible, Equatable, Hashable {
 public final class BareboneInvalidAgentConfig: BareboneAgentConfig {
 
     override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init() {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_invalid_agent_config_new()!
         super.init(handle: handle)
     }
 
@@ -2049,6 +2061,12 @@ public final class BareboneHostlinkPortsFabric: BareboneHostlinkFabric {
         super.init(handle: handle)
     }
 
+    public init() {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_hostlink_ports_fabric_new()!
+        super.init(handle: handle)
+    }
+
     public override var description: String {
         return "Frida.BareboneHostlinkPortsFabric()"
     }
@@ -2058,6 +2076,12 @@ public final class BareboneHostlinkPortsFabric: BareboneHostlinkFabric {
 public final class BareboneHostlinkMmioFabric: BareboneHostlinkFabric {
 
     override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init() {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_hostlink_mmio_fabric_new()!
         super.init(handle: handle)
     }
 

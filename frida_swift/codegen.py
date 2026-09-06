@@ -279,8 +279,6 @@ def generate_constructor_init(otype: ObjectType, ctor, model: Model) -> str:
         if ctor.throws:
             return ""
         sig, setters = collect_settings(otype, model, "handle")
-        if not sig:
-            return ""
         body = [f"let handle = {ctor.c_identifier}()!"] + setters
 
     handle = "handle!" if ctor.throws else "handle"
