@@ -1775,37 +1775,15 @@ public final class BareboneCallArgument: CustomStringConvertible, Equatable, Has
     }
 }
 
-public final class BareboneAgentConfig: CustomStringConvertible, Equatable, Hashable {
+public class BareboneAgentConfig: CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public init(path: String? = nil, transport: BareboneTransportConfig? = nil) {
-        Runtime.ensureInitialized()
-        let handle = frida_barebone_agent_config_new()!
-        if let path = path {
-            frida_barebone_agent_config_set_path(handle, path)
-        }
-        if let transport = transport {
-            frida_barebone_agent_config_set_transport(handle, transport.handle)
-        }
-        self.handle = handle
-    }
-
     deinit {
         g_object_unref(gpointer(handle))
-    }
-
-    public var path: String {
-        return String(cString: frida_barebone_agent_config_get_path(handle))
-    }
-
-    public var transport: BareboneTransportConfig {
-        let raw = frida_barebone_agent_config_get_transport(handle)!
-        g_object_ref(gpointer(raw))
-        return BareboneTransportConfig(handle: raw)
     }
 
     public func check() throws {
@@ -1817,7 +1795,7 @@ public final class BareboneAgentConfig: CustomStringConvertible, Equatable, Hash
     }
 
     public var description: String {
-        return "Frida.BareboneAgentConfig(path: \"\(path)\")"
+        return "Frida.BareboneAgentConfig()"
     }
 
     public static func == (lhs: BareboneAgentConfig, rhs: BareboneAgentConfig) -> Bool {
@@ -1827,6 +1805,96 @@ public final class BareboneAgentConfig: CustomStringConvertible, Equatable, Hash
     public func hash(into hasher: inout Hasher) {
         hasher.combine(UInt(bitPattern: handle))
     }
+}
+
+public final class BareboneInvalidAgentConfig: BareboneAgentConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInvalidAgentConfig()"
+    }
+
+}
+
+public final class BareboneInjectedAgentConfig: BareboneAgentConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(image: [UInt8]? = nil, transport: BareboneInjectingTransportConfig? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_injected_agent_config_new()!
+        let rawImage = Marshal.bytesFromArray(image)
+        if let rawImage = rawImage {
+            frida_barebone_injected_agent_config_set_image(handle, rawImage)
+            g_bytes_unref(rawImage)
+        }
+        if let transport = transport {
+            frida_barebone_injected_agent_config_set_transport(handle, transport.handle)
+        }
+        super.init(handle: handle)
+    }
+
+    public static func fromBytes(image: [UInt8], transport: BareboneInjectingTransportConfig) -> BareboneInjectedAgentConfig {
+        Runtime.ensureInitialized()
+        let rawImage = Marshal.bytesFromArray(image)
+        let handle = frida_barebone_injected_agent_config_new_from_bytes(rawImage, transport.handle)!
+        g_bytes_unref(rawImage)
+        return BareboneInjectedAgentConfig(handle: handle)
+    }
+
+    public static func fromFile(path: String, transport: BareboneInjectingTransportConfig) throws -> BareboneInjectedAgentConfig {
+        Runtime.ensureInitialized()
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_barebone_injected_agent_config_new_from_file(path, transport.handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        return BareboneInjectedAgentConfig(handle: handle!)
+    }
+
+    public var image: [UInt8]? {
+        return Marshal.arrayFromBytes(frida_barebone_injected_agent_config_get_image(handle))
+    }
+
+    public var transport: BareboneInjectingTransportConfig {
+        let raw = frida_barebone_injected_agent_config_get_transport(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneInjectingTransportConfig(handle: raw)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInjectedAgentConfig()"
+    }
+
+}
+
+public final class BareboneResidentAgentConfig: BareboneAgentConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(transport: BareboneResidentTransportConfig) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_resident_agent_config_new(transport.handle)!
+        super.init(handle: handle)
+    }
+
+    public var transport: BareboneResidentTransportConfig {
+        let raw = frida_barebone_resident_agent_config_get_transport(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneResidentTransportConfig(handle: raw)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneResidentAgentConfig()"
+    }
+
 }
 
 public class BareboneTransportConfig: CustomStringConvertible, Equatable, Hashable {
@@ -1861,25 +1929,37 @@ public class BareboneTransportConfig: CustomStringConvertible, Equatable, Hashab
     }
 }
 
-public final class BareboneInvalidTransportConfig: BareboneTransportConfig {
+public class BareboneInjectingTransportConfig: BareboneTransportConfig {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
     }
 
     public override var description: String {
-        return "Frida.BareboneInvalidTransportConfig()"
+        return "Frida.BareboneInjectingTransportConfig()"
     }
 
 }
 
-public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
+public class BareboneResidentTransportConfig: BareboneTransportConfig {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
     }
 
-    public init(qmp: String? = nil, bus: String? = nil, ecam: UInt64? = nil, mmio: UInt64? = nil, irq: UInt? = nil) {
+    public override var description: String {
+        return "Frida.BareboneResidentTransportConfig()"
+    }
+
+}
+
+public final class BareboneHostlinkTransportConfig: BareboneInjectingTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(qmp: String? = nil, bus: String? = nil, fabric: BareboneHostlinkFabric? = nil) {
         Runtime.ensureInitialized()
         let handle = frida_barebone_hostlink_transport_config_new()!
         if let qmp = qmp {
@@ -1888,14 +1968,8 @@ public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
         if let bus = bus {
             frida_barebone_hostlink_transport_config_set_bus(handle, bus)
         }
-        if let ecam = ecam {
-            frida_barebone_hostlink_transport_config_set_ecam(handle, guint64(ecam))
-        }
-        if let mmio = mmio {
-            frida_barebone_hostlink_transport_config_set_mmio(handle, guint64(mmio))
-        }
-        if let irq = irq {
-            frida_barebone_hostlink_transport_config_set_irq(handle, guint(irq))
+        if let fabric = fabric {
+            frida_barebone_hostlink_transport_config_set_fabric(handle, fabric.handle)
         }
         super.init(handle: handle)
     }
@@ -1911,25 +1985,89 @@ public final class BareboneHostlinkTransportConfig: BareboneTransportConfig {
         return nil
     }
 
-    public var ecam: UInt64 {
-        return UInt64(frida_barebone_hostlink_transport_config_get_ecam(handle))
-    }
-
-    public var mmio: UInt64 {
-        return UInt64(frida_barebone_hostlink_transport_config_get_mmio(handle))
-    }
-
-    public var irq: UInt {
-        return UInt(frida_barebone_hostlink_transport_config_get_irq(handle))
+    public var fabric: BareboneHostlinkFabric {
+        let raw = frida_barebone_hostlink_transport_config_get_fabric(handle)!
+        g_object_ref(gpointer(raw))
+        return BareboneHostlinkFabric(handle: raw)
     }
 
     public override var description: String {
-        return "Frida.BareboneHostlinkTransportConfig(qmp: \"\(qmp)\", ecam: \(ecam), mmio: \(mmio), irq: \(irq))"
+        return "Frida.BareboneHostlinkTransportConfig(qmp: \"\(qmp)\")"
     }
 
 }
 
-public final class BareboneVsockTransportConfig: BareboneTransportConfig {
+public class BareboneHostlinkFabric: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var description: String {
+        return "Frida.BareboneHostlinkFabric()"
+    }
+
+    public static func == (lhs: BareboneHostlinkFabric, rhs: BareboneHostlinkFabric) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BareboneHostlinkEcamFabric: BareboneHostlinkFabric {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public init(ecam: UInt64) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_hostlink_ecam_fabric_new(guint64(ecam))!
+        super.init(handle: handle)
+    }
+
+    public var ecam: UInt64 {
+        return UInt64(frida_barebone_hostlink_ecam_fabric_get_ecam(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneHostlinkEcamFabric(ecam: \(ecam))"
+    }
+
+}
+
+public final class BareboneHostlinkPortsFabric: BareboneHostlinkFabric {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneHostlinkPortsFabric()"
+    }
+
+}
+
+public final class BareboneHostlinkMmioFabric: BareboneHostlinkFabric {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneHostlinkMmioFabric()"
+    }
+
+}
+
+public final class BareboneVsockTransportConfig: BareboneInjectingTransportConfig {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
@@ -1961,7 +2099,7 @@ public final class BareboneVsockTransportConfig: BareboneTransportConfig {
 
 }
 
-public final class BareboneDeviceTransportConfig: BareboneTransportConfig {
+public final class BareboneDeviceTransportConfig: BareboneResidentTransportConfig {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
@@ -1986,7 +2124,7 @@ public final class BareboneDeviceTransportConfig: BareboneTransportConfig {
 
 }
 
-public final class BareboneSocketTransportConfig: BareboneTransportConfig {
+public final class BareboneSocketTransportConfig: BareboneResidentTransportConfig {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
