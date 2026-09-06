@@ -258,53 +258,95 @@ def generate_public_init(otype: ObjectType, model: Model) -> str:
     if otype.custom_members is not None and "init(" in read_asset(otype.custom_members):
         return ""
 
-    ctor = otype.constructors[0] if otype.constructors else None
-    if ctor is None or ctor.throws:
+    if not otype.constructors:
         return ""
 
-    new_func = ctor.c_identifier
+    primary = next((c for c in otype.constructors if c.name == "new"), otype.constructors[0])
 
+    members = [generate_constructor_init(otype, primary, model)]
+    for ctor in otype.constructors:
+        if ctor is not primary:
+            members.append(generate_factory_method(otype, ctor, model))
+    return "".join(members)
+
+
+def generate_constructor_init(otype: ObjectType, ctor, model: Model) -> str:
     if ctor.parameters:
-        sig = []
-        args = []
-        for param in ctor.parameters:
-            kind = swift_input_kind(param.type, model)
-            if kind is None:
-                return ""
-            tag, swift_type = kind
-            arg = swift_ident(param.name)
-            sig.append(f"{arg}: {swift_type}")
-            if tag == "object":
-                args.append(f"{arg}.handle")
-            elif tag == "enum":
-                cenum = param.type.c.replace("*", "").strip()
-                args.append(f"{cenum}(numericCast({arg}.rawValue))")
-            elif tag == "scalar" and swift_type != "Bool":
-                args.append(f"{_C_SCALAR[param.type.name]}({arg})")
-            elif tag == "scalar":
-                args.append(f"{arg} ? gboolean(1) : gboolean(0)")
-            else:
-                args.append(arg)
-        body = [f"let handle = {new_func}({', '.join(args)})!"]
+        sig, body = marshal_constructor_call(otype, ctor, model)
+        if sig is None:
+            return ""
     else:
+        if ctor.throws:
+            return ""
         sig, setters = collect_settings(otype, model, "handle")
         if not sig:
             return ""
-        body = [f"let handle = {new_func}()!"] + setters
+        body = [f"let handle = {ctor.c_identifier}()!"] + setters
 
+    handle = "handle!" if ctor.throws else "handle"
     if otype.emitted_parent is not None:
-        body.append("super.init(handle: handle)")
+        body.append(f"super.init(handle: {handle})")
     else:
-        body.append("self.handle = handle")
+        body.append(f"self.handle = {handle}")
 
     lines = "\n".join(f"        {line}" for line in body)
+    throws_kw = " throws" if ctor.throws else ""
 
     return f"""
-    public init({', '.join(sig)}) {{
+    public init({', '.join(sig)}){throws_kw} {{
         Runtime.ensureInitialized()
 {lines}
     }}
 """
+
+
+def generate_factory_method(otype: ObjectType, ctor, model: Model) -> str:
+    sig, body = marshal_constructor_call(otype, ctor, model)
+    if sig is None:
+        return ""
+
+    handle = "handle!" if ctor.throws else "handle"
+    body.append(f"return {otype.swift_name}(handle: {handle})")
+
+    lines = "\n".join(f"        {line}" for line in body)
+    throws_kw = " throws" if ctor.throws else ""
+
+    return f"""
+    public static func {swift_ident(ctor.name)}({', '.join(sig)}){throws_kw} -> {otype.swift_name} {{
+        Runtime.ensureInitialized()
+{lines}
+    }}
+"""
+
+
+def marshal_constructor_call(otype: ObjectType, ctor, model: Model):
+    sig = []
+    args = []
+    pre = []
+    post = []
+    for param in ctor.parameters:
+        kind = swift_input_kind(param.type, model)
+        if kind is None:
+            return None, None
+        call_arg, param_pre, param_post = marshal_input(param, model)
+        sig.append(f"{param.swift_name}: {kind[1]}")
+        args.append(call_arg)
+        pre += param_pre
+        post += param_post
+
+    body = pre + acquire_handle(ctor.c_identifier, args, ctor.throws) + post
+    if ctor.throws:
+        body += ["if let rawError {", "    throw Marshal.takeNativeError(rawError)", "}"]
+    return sig, body
+
+
+def acquire_handle(new_func: str, args, throws: bool):
+    if not throws:
+        return [f"let handle = {new_func}({', '.join(args)})!"]
+    return [
+        "var rawError: UnsafeMutablePointer<GError>? = nil",
+        f"let handle = {new_func}({', '.join(args + ['&rawError'])})",
+    ]
 
 
 def apply_override(member: str, name: str, inherited) -> str:
