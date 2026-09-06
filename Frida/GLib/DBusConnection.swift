@@ -55,8 +55,8 @@ extension GLib {
         }
 
         public func startMessageProcessing() {
-            MainContext.frida.schedule { [handle] in
-                g_dbus_connection_start_message_processing(handle)
+            MainContext.frida.schedule {
+                g_dbus_connection_start_message_processing(self.handle)
             }
         }
 
