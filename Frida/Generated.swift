@@ -4139,6 +4139,95 @@ public final class Compiler: @unchecked Sendable, CustomStringConvertible, Equat
     }
 }
 
+public final class LanguageServer: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+    private let eventSource = AsyncEventSource<Event>()
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+        connectSignal(instance: self, handle: handle, signal: "message", handler: onMessage)
+    }
+
+    public init(projectRoot: String) {
+        Runtime.ensureInitialized()
+        let handle = frida_language_server_new(projectRoot)!
+        self.handle = handle
+    }
+
+    deinit {
+        eventSource.finish()
+        g_object_unref(gpointer(handle))
+    }
+
+    public var events: Events {
+        eventSource.makeStream()
+    }
+
+    public typealias Events = AsyncStream<Event>
+
+    @frozen
+    public enum Event {
+        case message(String)
+    }
+
+    public var projectRoot: String {
+        return String(cString: frida_language_server_get_project_root(handle))
+    }
+
+    public func start() async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            frida_language_server_start(self.handle, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_language_server_start_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+        }
+    }
+
+    public func stop() {
+        frida_language_server_stop(handle)
+    }
+
+    public func post(_ json: String) throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_language_server_post(handle, json, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
+    private let onMessage: @convention(c) (OpaquePointer, UnsafePointer<gchar>, gpointer) -> Void = { _, arg0, userData in
+        let connection = Unmanaged<SignalConnection<LanguageServer>>.fromOpaque(userData).takeUnretainedValue()
+        guard let instance = connection.instance else { return }
+        let jsonValue = String(cString: arg0)
+        instance.publish(.message(jsonValue))
+    }
+
+    private func publish(_ event: Event) {
+        eventSource.yield(event)
+    }
+
+    public var description: String {
+        return "Frida.LanguageServer(projectRoot: \"\(projectRoot)\")"
+    }
+
+    public static func == (lhs: LanguageServer, rhs: LanguageServer) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
 public final class Relay: CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
 

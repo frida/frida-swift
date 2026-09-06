@@ -258,6 +258,13 @@ def load_customizations() -> Customizations:
             generate_signals=True,
             custom_members="file_monitor_members.swift",
         ),
+        "LanguageServer": ObjectTypeCustomizations(
+            sendable=True,
+            generate_signals=True,
+            methods={
+                "post": _sync_method("_ json: String"),
+            },
+        ),
         "EndpointParameters": ObjectTypeCustomizations(
             sendable=True,
             custom_members="endpoint_parameters_members.swift",
