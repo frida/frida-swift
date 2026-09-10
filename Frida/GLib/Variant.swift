@@ -65,7 +65,7 @@ extension GLib {
         }
 
         public var uint64: UInt64? {
-            isOfType("t") ? g_variant_get_uint64(handle) : nil
+            isOfType("t") ? UInt64(g_variant_get_uint64(handle)) : nil
         }
 
         public var string: String? {
