@@ -152,7 +152,7 @@ extension GLib {
                         if !fileDescriptors.isEmpty {
                             Self.lay(fileDescriptors, into: control)
                             message.msg_control = UnsafeMutableRawPointer(control.baseAddress)
-                            message.msg_controllen = socklen_t(control.count)
+                            message.msg_controllen = .init(control.count)
                         }
 
                         return sendmsg(fileDescriptor, &message, 0)
@@ -167,7 +167,7 @@ extension GLib {
         private static func lay(_ fileDescriptors: [Int32], into control: UnsafeMutableBufferPointer<UInt8>) {
             let header = UnsafeMutableRawPointer(control.baseAddress!).assumingMemoryBound(to: cmsghdr.self)
             header.pointee.cmsg_level = SOL_SOCKET
-            header.pointee.cmsg_type = SCM_RIGHTS
+            header.pointee.cmsg_type = .init(SCM_RIGHTS)
             header.pointee.cmsg_len = .init(headerLength + payloadLength(for: fileDescriptors))
 
             let payload = UnsafeMutableRawPointer(control.baseAddress!)
