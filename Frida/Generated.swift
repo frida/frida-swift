@@ -89,11 +89,15 @@ public enum BareboneKernelKind: UInt32, Codable, CustomStringConvertible {
 public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
     case gdbRemote = 0
     case vz = 1
+    case parallels = 2
+    case androidEmulator = 3
 
     public var description: String {
         switch self {
         case .gdbRemote: return "gdbRemote"
         case .vz: return "vz"
+        case .parallels: return "parallels"
+        case .androidEmulator: return "androidEmulator"
         }
     }
 }
@@ -1588,6 +1592,14 @@ public final class BareboneConnectionConfig: CustomStringConvertible, Equatable,
         return BareboneStubFlavor(rawValue: numericCast(frida_barebone_connection_config_get_flavor(handle).rawValue))!
     }
 
+    public func check() throws {
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        frida_barebone_connection_config_check(handle, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+    }
+
     public var description: String {
         return "Frida.BareboneConnectionConfig(host: \"\(host)\", port: \(port), pid: \(pid), flavor: \(flavor))"
     }
@@ -2119,6 +2131,56 @@ public final class BareboneVsockTransportConfig: BareboneInjectingTransportConfi
 
     public override var description: String {
         return "Frida.BareboneVsockTransportConfig(socketPath: \"\(socketPath)\", port: \(port))"
+    }
+
+}
+
+public final class BareboneSerialTransportConfig: BareboneInjectingTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(path: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_serial_transport_config_new()!
+        if let path = path {
+            frida_barebone_serial_transport_config_set_path(handle, path)
+        }
+        self.init(handle: handle)
+    }
+
+    public var path: String {
+        return String(cString: frida_barebone_serial_transport_config_get_path(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneSerialTransportConfig(path: \"\(path)\")"
+    }
+
+}
+
+public final class BareboneVsockPipeTransportConfig: BareboneInjectingTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(socketPath: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_vsock_pipe_transport_config_new()!
+        if let socketPath = socketPath {
+            frida_barebone_vsock_pipe_transport_config_set_socket_path(handle, socketPath)
+        }
+        self.init(handle: handle)
+    }
+
+    public var socketPath: String {
+        return String(cString: frida_barebone_vsock_pipe_transport_config_get_socket_path(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneVsockPipeTransportConfig(socketPath: \"\(socketPath)\")"
     }
 
 }
