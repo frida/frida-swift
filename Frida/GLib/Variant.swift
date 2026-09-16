@@ -47,9 +47,12 @@ extension GLib {
 
         public convenience init(tuple children: [Variant]) {
             var handles: [OpaquePointer?] = children.map(\.handle)
-            self.init(adopting: handles.withUnsafeMutableBufferPointer { children in
-                g_variant_new_tuple(children.baseAddress, gsize(children.count))
-            })
+            let tuple = withExtendedLifetime(children) {
+                handles.withUnsafeMutableBufferPointer { handles in
+                    g_variant_new_tuple(handles.baseAddress, gsize(handles.count))
+                }
+            }
+            self.init(adopting: tuple!)
         }
 
         public static func fileDescriptor(at index: Int32) -> Variant {
