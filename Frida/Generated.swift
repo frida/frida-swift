@@ -778,6 +778,8 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         connectSignal(instance: self, handle: handle, signal: "process-crashed", handler: onProcessCrashed)
         connectSignal(instance: self, handle: handle, signal: "output", handler: onOutput)
         connectSignal(instance: self, handle: handle, signal: "uninjected", handler: onUninjected)
+        connectSignal(instance: self, handle: handle, signal: "connecting", handler: onConnecting)
+        connectSignal(instance: self, handle: handle, signal: "connected", handler: onConnected)
         connectSignal(instance: self, handle: handle, signal: "lost", handler: onLost)
     }
 
@@ -802,6 +804,8 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         case processCrashed(CrashDetails)
         case output(data: [UInt8], fd: Int, pid: UInt)
         case uninjected(UInt)
+        case connecting(status: String, progress: Double)
+        case connected
         case lost
     }
 
@@ -1427,6 +1431,19 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
         guard let instance = connection.instance else { return }
         instance.publish(.uninjected(UInt(arg0)))
+    }
+
+    private let onConnecting: @convention(c) (OpaquePointer, UnsafePointer<gchar>, gdouble, gpointer) -> Void = { _, arg0, arg1, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+        guard let instance = connection.instance else { return }
+        let statusValue = String(cString: arg0)
+        instance.publish(.connecting(status: statusValue, progress: Double(arg1)))
+    }
+
+    private let onConnected: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
+        let connection = Unmanaged<SignalConnection<Device>>.fromOpaque(userData).takeUnretainedValue()
+        guard let instance = connection.instance else { return }
+        instance.publish(.connected)
     }
 
     private let onLost: @convention(c) (OpaquePointer, gpointer) -> Void = { _, userData in
