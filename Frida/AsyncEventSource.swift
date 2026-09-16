@@ -1,6 +1,9 @@
-public actor AsyncEventSource<Event> {
+import Foundation
+
+public final class AsyncEventSource<Event>: @unchecked Sendable {
     public typealias Stream = AsyncStream<Event>
 
+    private let lock = NSLock()
     private var nextID: Int = 0
     private var continuations: [Int: Stream.Continuation] = [:]
     private var isFinished = false
@@ -8,24 +11,53 @@ public actor AsyncEventSource<Event> {
 
     public init() {}
 
-    public nonisolated func makeStream() -> Stream {
+    public func makeStream() -> Stream {
         Stream { continuation in
-            Task { await self.addSubscriber(continuation) }
+            addSubscriber(continuation)
         }
     }
 
-    public nonisolated func yield(_ event: Event) {
-        Task { await self.emit(event) }
+    public func yield(_ event: Event) {
+        lock.lock()
+        if isFinished {
+            lock.unlock()
+            return
+        }
+        let subscribers = Array(continuations.values)
+        lock.unlock()
+
+        for c in subscribers {
+            c.yield(event)
+        }
     }
 
-    public nonisolated func finish(replayLast last: Event? = nil) {
-        Task { await self.finishAll(replayLast: last) }
+    public func finish(replayLast last: Event? = nil) {
+        lock.lock()
+        if isFinished {
+            lock.unlock()
+            return
+        }
+        isFinished = true
+        terminalEvent = last
+        let subscribers = Array(continuations.values)
+        continuations.removeAll()
+        lock.unlock()
+
+        for c in subscribers {
+            if let last {
+                c.yield(last)
+            }
+            c.finish()
+        }
     }
 
     private func addSubscriber(_ continuation: Stream.Continuation) {
+        lock.lock()
         if isFinished {
-            if let event = terminalEvent {
-                continuation.yield(event)
+            let last = terminalEvent
+            lock.unlock()
+            if let last {
+                continuation.yield(last)
             }
             continuation.finish()
             return
@@ -34,44 +66,16 @@ public actor AsyncEventSource<Event> {
         let id = nextID
         nextID &+= 1
         continuations[id] = continuation
+        lock.unlock()
 
         continuation.onTermination = { [weak self] _ in
-            guard let self else { return }
-            Task { await self.removeSubscriber(id) }
+            self?.removeSubscriber(id)
         }
     }
 
     private func removeSubscriber(_ id: Int) {
+        lock.lock()
         continuations.removeValue(forKey: id)
-    }
-
-    private func emit(_ event: Event) {
-        if isFinished {
-            return
-        }
-
-        let subs = Array(continuations.values)
-        for c in subs {
-            c.yield(event)
-        }
-    }
-
-    private func finishAll(replayLast last: Event?) {
-        if isFinished {
-            return
-        }
-
-        isFinished = true
-        terminalEvent = last
-
-        let subs = Array(continuations.values)
-        continuations.removeAll()
-
-        for c in subs {
-            if let event = last {
-                c.yield(event)
-            }
-            c.finish()
-        }
+        lock.unlock()
     }
 }
