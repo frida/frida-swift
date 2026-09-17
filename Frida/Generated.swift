@@ -2252,34 +2252,15 @@ public final class BareboneSocketTransportConfig: BareboneResidentTransportConfi
 
 }
 
-public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hashable {
+public class BareboneImageConfig: CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
 
     init(handle: OpaquePointer) {
         self.handle = handle
     }
 
-    public convenience init(symbols: [String: UInt64]? = nil, file: String? = nil, base: BareboneMemoryAddress? = nil) {
-        Runtime.ensureInitialized()
-        let handle = frida_barebone_image_config_new()!
-        for (key, element) in symbols ?? [:] {
-            frida_barebone_image_config_add_symbol(handle, key, guint64(element))
-        }
-        if let file = file {
-            frida_barebone_image_config_set_file(handle, file)
-        }
-        if let base = base {
-            frida_barebone_image_config_set_base(handle, base.handle)
-        }
-        self.init(handle: handle)
-    }
-
     deinit {
         g_object_unref(gpointer(handle))
-    }
-
-    public var file: String {
-        return String(cString: frida_barebone_image_config_get_file(handle))
     }
 
     public var base: BareboneMemoryAddress {
@@ -2305,7 +2286,7 @@ public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hash
     }
 
     public var description: String {
-        return "Frida.BareboneImageConfig(file: \"\(file)\")"
+        return "Frida.BareboneImageConfig()"
     }
 
     public static func == (lhs: BareboneImageConfig, rhs: BareboneImageConfig) -> Bool {
@@ -2315,6 +2296,84 @@ public final class BareboneImageConfig: CustomStringConvertible, Equatable, Hash
     public func hash(into hasher: inout Hasher) {
         hasher.combine(UInt(bitPattern: handle))
     }
+}
+
+public final class BareboneInvalidImageConfig: BareboneImageConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneInvalidImageConfig()"
+    }
+
+}
+
+public final class BareboneXnuKernelcacheConfig: BareboneImageConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(kernelcache: XnuKernelcache? = nil, symbols: [String: UInt64]? = nil, base: BareboneMemoryAddress? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_xnu_kernelcache_config_new()!
+        if let kernelcache = kernelcache {
+            frida_barebone_xnu_kernelcache_config_set_kernelcache(handle, kernelcache.handle)
+        }
+        for (key, element) in symbols ?? [:] {
+            frida_barebone_image_config_add_symbol(handle, key, guint64(element))
+        }
+        if let base = base {
+            frida_barebone_image_config_set_base(handle, base.handle)
+        }
+        self.init(handle: handle)
+    }
+
+    public var kernelcache: XnuKernelcache {
+        let raw = frida_barebone_xnu_kernelcache_config_get_kernelcache(handle)!
+        g_object_ref(gpointer(raw))
+        return XnuKernelcache(handle: raw)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneXnuKernelcacheConfig()"
+    }
+
+}
+
+public final class BareboneLinuxKernelConfig: BareboneImageConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(kernel: LinuxKernelSymbols? = nil, symbols: [String: UInt64]? = nil, base: BareboneMemoryAddress? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_linux_kernel_config_new()!
+        if let kernel = kernel {
+            frida_barebone_linux_kernel_config_set_kernel(handle, kernel.handle)
+        }
+        for (key, element) in symbols ?? [:] {
+            frida_barebone_image_config_add_symbol(handle, key, guint64(element))
+        }
+        if let base = base {
+            frida_barebone_image_config_set_base(handle, base.handle)
+        }
+        self.init(handle: handle)
+    }
+
+    public var kernel: LinuxKernelSymbols {
+        let raw = frida_barebone_linux_kernel_config_get_kernel(handle)!
+        g_object_ref(gpointer(raw))
+        return LinuxKernelSymbols(handle: raw)
+    }
+
+    public override var description: String {
+        return "Frida.BareboneLinuxKernelConfig()"
+    }
+
 }
 
 public class BareboneMemoryAddress: CustomStringConvertible, Equatable, Hashable {
@@ -3481,6 +3540,78 @@ public final class PortalMembership: CustomStringConvertible, Equatable, Hashabl
     }
 
     public static func == (lhs: PortalMembership, rhs: PortalMembership) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public class LinuxKernelSymbols: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var description: String {
+        return "Frida.LinuxKernelSymbols()"
+    }
+
+    public static func == (lhs: LinuxKernelSymbols, rhs: LinuxKernelSymbols) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class LinuxKernelImage: LinuxKernelSymbols {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.LinuxKernelImage()"
+    }
+
+}
+
+public final class LinuxSystemMap: LinuxKernelSymbols {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public override var description: String {
+        return "Frida.LinuxSystemMap()"
+    }
+
+}
+
+public final class XnuKernelcache: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var description: String {
+        return "Frida.XnuKernelcache()"
+    }
+
+    public static func == (lhs: XnuKernelcache, rhs: XnuKernelcache) -> Bool {
         return lhs.handle == rhs.handle
     }
 
