@@ -91,6 +91,7 @@ public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
     case vz = 1
     case parallels = 2
     case androidEmulator = 3
+    case virtualbox = 4
 
     public var description: String {
         switch self {
@@ -98,6 +99,7 @@ public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
         case .vz: return "vz"
         case .parallels: return "parallels"
         case .androidEmulator: return "androidEmulator"
+        case .virtualbox: return "virtualbox"
         }
     }
 }
@@ -3559,6 +3561,18 @@ public class LinuxKernelSymbols: CustomStringConvertible, Equatable, Hashable {
         g_object_unref(gpointer(handle))
     }
 
+    public func hasSymbol(name: String) -> Bool {
+        return frida_linux_kernel_symbols_has_symbol(handle, name) != 0
+    }
+
+    public func tryFindSymbol(name: String) -> UInt64? {
+        var address: UInt64 = 0
+        guard frida_linux_kernel_symbols_try_find_symbol(handle, name, &address) != 0 else {
+            return nil
+        }
+        return address
+    }
+
     public var description: String {
         return "Frida.LinuxKernelSymbols()"
     }
@@ -3578,6 +3592,28 @@ public final class LinuxKernelImage: LinuxKernelSymbols {
         super.init(handle: handle)
     }
 
+    public convenience init(blob: [UInt8]) throws {
+        Runtime.ensureInitialized()
+        let rawBlob = Marshal.bytesFromArray(blob)
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_linux_kernel_image_from_blob(rawBlob, &rawError)
+        g_bytes_unref(rawBlob)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        self.init(handle: handle!)
+    }
+
+    public static func open(path: String) throws -> LinuxKernelImage {
+        Runtime.ensureInitialized()
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_linux_kernel_image_open(path, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        return LinuxKernelImage(handle: handle!)
+    }
+
     public override var description: String {
         return "Frida.LinuxKernelImage()"
     }
@@ -3588,6 +3624,28 @@ public final class LinuxSystemMap: LinuxKernelSymbols {
 
     override init(handle: OpaquePointer) {
         super.init(handle: handle)
+    }
+
+    public convenience init(blob: [UInt8]) throws {
+        Runtime.ensureInitialized()
+        let rawBlob = Marshal.bytesFromArray(blob)
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_linux_system_map_from_blob(rawBlob, &rawError)
+        g_bytes_unref(rawBlob)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        self.init(handle: handle!)
+    }
+
+    public static func open(path: String) throws -> LinuxSystemMap {
+        Runtime.ensureInitialized()
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_linux_system_map_open(path, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        return LinuxSystemMap(handle: handle!)
     }
 
     public override var description: String {
@@ -3601,6 +3659,24 @@ public final class XnuKernelcache: CustomStringConvertible, Equatable, Hashable 
 
     init(handle: OpaquePointer) {
         self.handle = handle
+    }
+
+    public convenience init(blob: [UInt8]) {
+        Runtime.ensureInitialized()
+        let rawBlob = Marshal.bytesFromArray(blob)
+        let handle = frida_xnu_kernelcache_from_blob(rawBlob)!
+        g_bytes_unref(rawBlob)
+        self.init(handle: handle)
+    }
+
+    public static func open(path: String) throws -> XnuKernelcache {
+        Runtime.ensureInitialized()
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_xnu_kernelcache_open(path, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        return XnuKernelcache(handle: handle!)
     }
 
     deinit {

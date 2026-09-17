@@ -621,8 +621,15 @@ def generate_getter(method: Method, model: Model) -> str:
     rv = method.return_value
     kind, swift_type = swift_return_kind(rv.type, model)
     call = f"{method.c_identifier}(handle)"
-    nullable = rv.nullable
+    swift_type, body = marshal_return(method, kind, swift_type, call, rv.nullable)
 
+    return (f"    public var {method.property_name}: {swift_type} {{\n"
+            f"{body}\n"
+            f"    }}")
+
+
+def marshal_return(method: Method, kind: str, swift_type: str, call: str, nullable: bool):
+    """Classified return to the Swift type it takes and the lines that yield it."""
     if kind == "scalar" and swift_type == "Bool":
         body = f"        return {call} != 0"
     elif kind == "scalar":
@@ -666,9 +673,7 @@ def generate_getter(method: Method, model: Model) -> str:
     else:
         raise AssertionError(kind)
 
-    return (f"    public var {method.property_name}: {swift_type} {{\n"
-            f"{body}\n"
-            f"    }}")
+    return swift_type, body
 
 
 def generate_async_method(otype: ObjectType, method: Method, model: Model) -> str:
@@ -757,14 +762,37 @@ def generate_sync_method(method: Method, model: Model) -> str:
         post.extend(post_lines)
 
     rv = method.return_value
-    returns_strv = rv is not None and swift_return_kind(rv.type, model)[0] == "strv"
+    kind, swift_type = swift_return_kind(rv.type, model) if rv is not None else ("void", "Void")
 
     lines = list(pre)
-    if returns_strv:
+    out = method.optional_out_parameter
+    if out is not None:
+        _, out_type = swift_return_kind(out.type, model)
+        lines.append(f"var {out.swift_name}: {out_type} = 0")
+        call = f"{method.c_identifier}({', '.join(call_args + ['&' + out.swift_name])})"
+        lines += [f"guard {call} != 0 else {{", "    return nil", "}"]
+        lines.extend(post)
+        lines.append(f"return {out.swift_name}")
+        ret_sig = f" -> {out_type}?"
+    elif kind == "strv":
         call = f"{method.c_identifier}({', '.join(call_args + ['nil'])})"
         lines += [f"guard let raw = {call} else {{", "    return []", "}",
                   "return Marshal.arrayFromStrv(raw)"]
         ret_sig = " -> [String]"
+    elif kind != "void":
+        if method.throws:
+            lines.append("var rawError: UnsafeMutablePointer<GError>? = nil")
+            call_args.append("&rawError")
+        call = f"{method.c_identifier}({', '.join(call_args)})"
+        if method.throws or post:
+            lines.append(f"let result = {call}")
+            lines.extend(post)
+            if method.throws:
+                lines += ["if let rawError {", "    throw Marshal.takeNativeError(rawError)", "}"]
+            call = "result"
+        swift_type, body = marshal_return(method, kind, swift_type, call, rv.nullable)
+        lines.extend(line.strip() for line in body.split("\n"))
+        ret_sig = f" -> {swift_type}"
     elif method.throws:
         lines.append("var rawError: UnsafeMutablePointer<GError>? = nil")
         lines.append(f"{method.c_identifier}({', '.join(call_args + ['&rawError'])})")

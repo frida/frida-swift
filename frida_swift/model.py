@@ -275,10 +275,24 @@ class Method(core.Method):
         model = self.object_type.model
         rv = self.return_value
         if rv is not None:
-            kind = swift_return_kind(rv.type, model)
-            if kind is None or kind[0] not in ("void", "strv"):
+            if swift_return_kind(rv.type, model) is None:
                 return False
+        if self.out_parameters and self.optional_out_parameter is None:
+            return False
         return all(swift_input_kind(p.type, model) is not None for p in self.swift_input_parameters)
+
+    @cached_property
+    def optional_out_parameter(self) -> Optional["Parameter"]:
+        """The value a `gboolean` method hands back through a single out parameter."""
+        outs = self.out_parameters
+        if len(outs) != 1:
+            return None
+        rv = self.return_value
+        if rv is None or rv.type.name != "gboolean":
+            return None
+        if swift_return_kind(outs[0].type, self.object_type.model) is None:
+            return None
+        return outs[0]
 
     @cached_property
     def swift_name(self) -> str:
@@ -617,7 +631,7 @@ class EnumerationMemberCustomizations:
 def _make_class(**kw):
     return ClassObjectType(
         kw["name"], kw["c_type"], kw["get_type"], kw["type_struct"],
-        kw["parent"], kw["constructors"], kw["methods"], kw["properties"],
+        kw["parent"], kw["constructors"], kw["functions"], kw["methods"], kw["properties"],
         kw["signals"], kw["resolve_type"], kw["model"],
     )
 
@@ -625,7 +639,7 @@ def _make_class(**kw):
 def _make_interface(**kw):
     return InterfaceObjectType(
         kw["name"], kw["c_type"], kw["get_type"], kw["type_struct"],
-        kw["parent"], kw["constructors"], kw["methods"], kw["properties"],
+        kw["parent"], kw["constructors"], kw["functions"], kw["methods"], kw["properties"],
         kw["signals"], kw["resolve_type"], kw["model"],
     )
 
