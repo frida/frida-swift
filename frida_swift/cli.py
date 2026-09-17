@@ -48,5 +48,5 @@ class OutputFile:
         if self._output_path.exists():
             if self._output_path.read_text(encoding="utf-8") == result:
                 return False
-        self._output_path.write_text(result, encoding="utf-8")
+        self._output_path.write_text(result, encoding="utf-8", newline="\n")
         return False
