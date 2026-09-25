@@ -92,6 +92,7 @@ public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
     case parallels = 2
     case androidEmulator = 3
     case virtualbox = 4
+    case virtualboxConsole = 5
 
     public var description: String {
         switch self {
@@ -100,6 +101,7 @@ public enum BareboneStubFlavor: UInt32, Codable, CustomStringConvertible {
         case .parallels: return "parallels"
         case .androidEmulator: return "androidEmulator"
         case .virtualbox: return "virtualbox"
+        case .virtualboxConsole: return "virtualboxConsole"
         }
     }
 }
@@ -402,6 +404,23 @@ public enum RelayKind: UInt32, Codable, CustomStringConvertible {
         case .turnUdp: return "turnUdp"
         case .turnTcp: return "turnTcp"
         case .turnTls: return "turnTls"
+        }
+    }
+}
+
+@frozen
+public enum WaitKind: UInt32, Codable, CustomStringConvertible {
+    case exited = 0
+    case signaled = 1
+    case stopped = 2
+    case other = 3
+
+    public var description: String {
+        switch self {
+        case .exited: return "exited"
+        case .signaled: return "signaled"
+        case .stopped: return "stopped"
+        case .other: return "other"
         }
     }
 }
@@ -2200,6 +2219,31 @@ public final class BareboneVsockPipeTransportConfig: BareboneInjectingTransportC
 
     public override var description: String {
         return "Frida.BareboneVsockPipeTransportConfig(socketPath: \"\(socketPath)\")"
+    }
+
+}
+
+public final class BareboneGoldfishPipeTransportConfig: BareboneInjectingTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(socketPath: String? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_goldfish_pipe_transport_config_new()!
+        if let socketPath = socketPath {
+            frida_barebone_goldfish_pipe_transport_config_set_socket_path(handle, socketPath)
+        }
+        self.init(handle: handle)
+    }
+
+    public var socketPath: String {
+        return String(cString: frida_barebone_goldfish_pipe_transport_config_get_socket_path(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneGoldfishPipeTransportConfig(socketPath: \"\(socketPath)\")"
     }
 
 }
