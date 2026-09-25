@@ -3610,11 +3610,11 @@ public class LinuxKernelSymbols: CustomStringConvertible, Equatable, Hashable {
     }
 
     public func tryFindSymbol(name: String) -> UInt64? {
-        var address: UInt64 = 0
+        var address: guint64 = 0
         guard frida_linux_kernel_symbols_try_find_symbol(handle, name, &address) != 0 else {
             return nil
         }
-        return address
+        return UInt64(address)
     }
 
     public var description: String {

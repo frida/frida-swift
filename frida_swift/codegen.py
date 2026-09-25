@@ -768,11 +768,11 @@ def generate_sync_method(method: Method, model: Model) -> str:
     out = method.optional_out_parameter
     if out is not None:
         _, out_type = swift_return_kind(out.type, model)
-        lines.append(f"var {out.swift_name}: {out_type} = 0")
+        lines.append(f"var {out.swift_name}: {_C_SCALAR[out.type.name]} = 0")
         call = f"{method.c_identifier}({', '.join(call_args + ['&' + out.swift_name])})"
         lines += [f"guard {call} != 0 else {{", "    return nil", "}"]
         lines.extend(post)
-        lines.append(f"return {out.swift_name}")
+        lines.append(f"return {out_type}({out.swift_name})")
         ret_sig = f" -> {out_type}?"
     elif kind == "strv":
         call = f"{method.c_identifier}({', '.join(call_args + ['nil'])})"
