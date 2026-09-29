@@ -467,6 +467,8 @@ def swift_input_kind(type: core.Type, model):
         return ("bytes", "[UInt8]")
     if n == "GLib.Variant":
         return ("variant", "Any")
+    if n == "GLib.HashTable":
+        return ("vardict", "[String: Any]")
     if n in _SCALAR_MAP:
         return ("scalar", _SCALAR_MAP[n])
     enum = model.enumerations.get(n.split(".")[-1])
@@ -491,13 +493,20 @@ def swift_return_kind(type: Optional[core.Type], model):
         return ("bytes", "[UInt8]")
     if n == "GLib.HashTable":
         return ("vardict", "[String: Any]")
+    if n == "GLib.Variant":
+        return ("variant", "Any")
     if n in _SCALAR_MAP:
         return ("scalar", _SCALAR_MAP[n])
     enum = model.enumerations.get(n.split(".")[-1])
     if enum is not None and not enum.drop:
         return ("enum", enum.swift_name)
     obj = model.swift_class_for(n)
-    if obj is not None and obj.emit and not obj.is_frida_list and not obj.is_interface:
+    if obj is not None and obj.is_frida_list:
+        element = list_element_type(obj, model)
+        if element is not None and element.emit:
+            return ("list", f"[{element.swift_name}]")
+        return None
+    if obj is not None and obj.emit and not obj.is_interface:
         return ("object", obj.swift_name)
     return None
 
@@ -509,14 +518,6 @@ def swift_return_kind_async(type: Optional[core.Type], model):
     n = type.name
     if n == "Gio.IOStream":
         return ("giostream", "GLib.IOStream")
-    if n == "GLib.Variant":
-        return ("variant", "Any")
-    obj = model.swift_class_for(n)
-    if obj is not None and obj.is_frida_list:
-        element = list_element_type(obj, model)
-        if element is not None and element.emit:
-            return ("list", f"[{element.swift_name}]")
-        return None
     return swift_return_kind(type, model)
 
 

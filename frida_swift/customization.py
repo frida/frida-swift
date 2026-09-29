@@ -68,6 +68,7 @@ def load_customizations() -> Customizations:
             conformances=["Identifiable"],
             extra_members=_DEVICE_ICON,
             methods={
+                "get_icon": MethodCustomizations(drop=True),
                 "is_lost": MethodCustomizations(as_property=True),
                 "get_dtype": MethodCustomizations(property_name="type"),
             },
@@ -247,10 +248,12 @@ def load_customizations() -> Customizations:
             },
         ),
         "PackageSearchResult": ObjectTypeCustomizations(
+            methods={"get_packages": MethodCustomizations(drop=True)},
             sendable=True,
             custom_members="package_search_result_members.swift",
         ),
         "PackageInstallResult": ObjectTypeCustomizations(
+            methods={"get_packages": MethodCustomizations(drop=True)},
             sendable=True,
             custom_members="package_install_result_members.swift",
         ),

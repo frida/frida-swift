@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import List, Optional
 
+from frida_bindgen_core.model import TransferOwnership
 from frida_bindgen_core.naming import to_camel_case, to_snake_case
 
 from .model import (Enumeration, Method, Model, ObjectType, Parameter,
@@ -658,6 +659,29 @@ def marshal_return(method: Method, kind: str, swift_type: str, call: str, nullab
                 f"        return Marshal.{converter}(raw)")
     elif kind == "vardict":
         body = f"        return Marshal.dictionaryFromParametersDict({call})"
+    elif kind == "variant":
+        owned = (method.return_value.transfer_ownership
+                 != TransferOwnership.none)
+        release = "        g_variant_unref(raw)\n" if owned else ""
+        swift_type += "?"
+        body = (f"        guard let raw = {call} else {{\n"
+                f"            return nil\n"
+                f"        }}\n"
+                f"        let value = Marshal.valueFromVariant(raw)\n"
+                f"{release}"
+                f"        return value")
+    elif kind == "list":
+        model = method.object_type.model
+        element = list_element_type(
+            model.swift_class_for(method.return_value.type.name), model)
+        prefix = "frida_" + to_snake_case(element.name)
+        body = (f"        let raw = {call}!\n"
+                f"        var items: {swift_type} = []\n"
+                f"        for i in 0..<{prefix}_list_size(raw) {{\n"
+                f"            items.append({element.swift_name}"
+                f"(handle: {prefix}_list_get(raw, i)))\n"
+                f"        }}\n"
+                f"        return items")
     elif kind == "object":
         if nullable:
             swift_type += "?"
@@ -701,7 +725,7 @@ def generate_async_method(otype: ObjectType, method: Method, model: Model) -> st
             post.extend(option_post)
             call_args.append("options")
             continue
-        sig_parts.append(f"{p.swift_name}: {swift_input_kind(p.type, model)[1]}")
+        sig_parts.append(input_signature(p, model))
         arg, pre_lines, post_lines = marshal_input(p, model)
         call_args.append(arg)
         pre.extend(pre_lines)
@@ -755,7 +779,7 @@ def generate_sync_method(method: Method, model: Model) -> str:
     call_args: List[str] = ["handle"]
     post: List[str] = []
     for p in method.swift_input_parameters:
-        sig_parts.append(f"{p.swift_name}: {swift_input_kind(p.type, model)[1]}")
+        sig_parts.append(input_signature(p, model))
         arg, pre_lines, post_lines = marshal_input(p, model)
         call_args.append(arg)
         pre.extend(pre_lines)
@@ -987,6 +1011,13 @@ def _adder_setter(setter, arg, param, model, target="options"):
     return None
 
 
+def input_signature(param: Parameter, model: Model) -> str:
+    kind, swift_type = swift_input_kind(param.type, model)
+    if param.nullable and kind in {"vardict", "bytes"}:
+        return f"{param.swift_name}: {swift_type}? = nil"
+    return f"{param.swift_name}: {swift_type}"
+
+
 def marshal_input(param: Parameter, model: Model):
     """Return (call_arg, pre_lines, post_lines) for an input parameter."""
     name = param.swift_name
@@ -1002,6 +1033,16 @@ def marshal_input(param: Parameter, model: Model):
     if kind == "bytes":
         raw = f"raw{name[0].upper()}{name[1:]}"
         return raw, [f"let {raw} = Marshal.bytesFromArray({name})"], [f"g_bytes_unref({raw})"]
+    if kind == "vardict":
+        raw = f"raw{name[0].upper()}{name[1:]}"
+        if param.nullable:
+            return (raw,
+                    [f"let {raw} = {name}.map {{ "
+                     f"Marshal.parametersDictFromDictionary($0) }}"],
+                    [f"if let {raw} {{ g_hash_table_unref({raw}) }}"])
+        return (raw,
+                [f"let {raw} = Marshal.parametersDictFromDictionary({name})"],
+                [f"g_hash_table_unref({raw})"])
     if kind == "variant":
         raw = f"raw{name[0].upper()}{name[1:]}"
         return (raw,

@@ -73,6 +73,14 @@ class Marshal {
         return result
     }
 
+    static func parametersDictFromDictionary(_ dictionary: [String: Any]) -> OpaquePointer {
+        let hashTable = g_hash_table_new_full(g_str_hash, g_str_equal, { g_free($0) }, { g_variant_unref(OpaquePointer($0)) })!
+        for (key, value) in dictionary {
+            g_hash_table_insert(hashTable, g_strdup(key), gpointer(g_variant_ref_sink(variantFromValue(value))))
+        }
+        return hashTable
+    }
+
     static func valueFromVariant(_ v: OpaquePointer) -> Any {
         switch g_variant_classify(v) {
         case G_VARIANT_CLASS_STRING:
