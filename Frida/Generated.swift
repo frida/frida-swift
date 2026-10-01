@@ -166,6 +166,102 @@ public enum PackageRole: UInt32, Codable, CustomStringConvertible {
 }
 
 @frozen
+public enum PatternTypeKind: UInt32, Codable, CustomStringConvertible {
+    case `struct` = 0
+    case union = 1
+    case `enum` = 2
+    case bitfield = 3
+    case alias = 4
+
+    public var description: String {
+        switch self {
+        case .`struct`: return "struct"
+        case .union: return "union"
+        case .`enum`: return "enum"
+        case .bitfield: return "bitfield"
+        case .alias: return "alias"
+        }
+    }
+}
+
+@frozen
+public enum PatternTypeRefKind: UInt32, Codable, CustomStringConvertible {
+    case primitive = 0
+    case named = 1
+    case pointer = 2
+    case array = 3
+    case padding = 4
+
+    public var description: String {
+        switch self {
+        case .primitive: return "primitive"
+        case .named: return "named"
+        case .pointer: return "pointer"
+        case .array: return "array"
+        case .padding: return "padding"
+        }
+    }
+}
+
+@frozen
+public enum PatternByteOrder: UInt32, Codable, CustomStringConvertible {
+    case native = 0
+    case little = 1
+    case big = 2
+
+    public var description: String {
+        switch self {
+        case .native: return "native"
+        case .little: return "little"
+        case .big: return "big"
+        }
+    }
+}
+
+@frozen
+public enum PatternBitKind: UInt32, Codable, CustomStringConvertible {
+    case unsigned = 0
+    case signed = 1
+    case bool = 2
+    case `enum` = 3
+
+    public var description: String {
+        switch self {
+        case .unsigned: return "unsigned"
+        case .signed: return "signed"
+        case .bool: return "bool"
+        case .`enum`: return "enum"
+        }
+    }
+}
+
+@frozen
+public enum PatternVisualizerPresentation: UInt32, Codable, CustomStringConvertible {
+    case detached = 0
+    case inline = 1
+
+    public var description: String {
+        switch self {
+        case .detached: return "detached"
+        case .inline: return "inline"
+        }
+    }
+}
+
+@frozen
+public enum PatternVisualizerArgumentKind: UInt32, Codable, CustomStringConvertible {
+    case value = 0
+    case pattern = 1
+
+    public var description: String {
+        switch self {
+        case .value: return "value"
+        case .pattern: return "pattern"
+        }
+    }
+}
+
+@frozen
 public enum OutputFormat: UInt32, Codable, CustomStringConvertible {
     case unescaped = 0
     case hexBytes = 1
@@ -1152,7 +1248,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    public func spawn(program: String, argv: [String]? = nil, envp: [String]? = nil, env: [String: String]? = nil, cwd: String? = nil, stdio: Stdio? = nil) async throws -> UInt {
+    public func spawn(program: String, argv: [String]? = nil, envp: [String]? = nil, env: [String: String]? = nil, cwd: String? = nil, stdio: Stdio? = nil, aux: [String: Any]? = nil) async throws -> UInt {
         return try await fridaAsync(UInt.self) { op in
             let options = frida_spawn_options_new()!
             let (rawArgv, rawArgvLength) = Marshal.strvFromArray(argv)
@@ -1175,6 +1271,11 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
             if let stdio = stdio {
                 frida_spawn_options_set_stdio(options, FridaStdio(numericCast(stdio.rawValue)))
+            }
+            if let aux = aux {
+                let rawAux = Marshal.parametersDictFromDictionary(aux)
+                frida_spawn_options_set_aux(options, rawAux)
+                g_hash_table_unref(rawAux)
             }
             frida_device_spawn(self.handle, program, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<UInt>.takeRetained(from: userData!)
@@ -4550,6 +4651,865 @@ public final class LanguageServer: @unchecked Sendable, CustomStringConvertible,
     }
 
     public static func == (lhs: LanguageServer, rhs: LanguageServer) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternCompiler: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public convenience init() {
+        Runtime.ensureInitialized()
+        let handle = frida_pattern_compiler_new()!
+        self.init(handle: handle)
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public func compile(source: String, platform: String? = nil, arch: String? = nil) async throws -> PatternModule {
+        return try await fridaAsync(PatternModule.self) { op in
+            let options = frida_pattern_compile_options_new()!
+            if let platform = platform {
+                frida_pattern_compile_options_set_platform(options, platform)
+            }
+            if let arch = arch {
+                frida_pattern_compile_options_set_arch(options, arch)
+            }
+            frida_pattern_compiler_compile(self.handle, source, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<PatternModule>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawResult = frida_pattern_compiler_compile_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(PatternModule(handle: rawResult!))
+            }, op.userData)
+            g_object_unref(gpointer(options))
+        }
+    }
+
+    public var description: String {
+        return "Frida.PatternCompiler()"
+    }
+
+    public static func == (lhs: PatternCompiler, rhs: PatternCompiler) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternModule: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var types: [PatternType] {
+        let raw = frida_pattern_module_get_types(handle)!
+        var items: [PatternType] = []
+        for i in 0..<frida_pattern_type_list_size(raw) {
+            items.append(PatternType(handle: frida_pattern_type_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var rootType: String? {
+        if let raw = frida_pattern_module_get_root_type(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var inputs: [PatternInput] {
+        let raw = frida_pattern_module_get_inputs(handle)!
+        var items: [PatternInput] = []
+        for i in 0..<frida_pattern_input_list_size(raw) {
+            items.append(PatternInput(handle: frida_pattern_input_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var diagnostics: [PatternDiagnostic] {
+        let raw = frida_pattern_module_get_diagnostics(handle)!
+        var items: [PatternDiagnostic] = []
+        for i in 0..<frida_pattern_diagnostic_list_size(raw) {
+            items.append(PatternDiagnostic(handle: frida_pattern_diagnostic_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public func decode(typeName: String, data: [UInt8], address: UInt64, inputs: [String: Any]? = nil) async throws -> PatternValue {
+        return try await fridaAsync(PatternValue.self) { op in
+            let rawData = Marshal.bytesFromArray(data)
+            let options = frida_pattern_decode_options_new()!
+            if let inputs = inputs {
+                let rawInputs = Marshal.parametersDictFromDictionary(inputs)
+                frida_pattern_decode_options_set_inputs(options, rawInputs)
+                g_hash_table_unref(rawInputs)
+            }
+            frida_pattern_module_decode(self.handle, typeName, rawData, guint64(address), options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<PatternValue>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawResult = frida_pattern_module_decode_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(PatternValue(handle: rawResult!))
+            }, op.userData)
+            g_bytes_unref(rawData)
+            g_object_unref(gpointer(options))
+        }
+    }
+
+    public func callFunction(typeName: String, data: [UInt8], address: UInt64, pattern: UInt, function: String, inputs: [String: Any]? = nil) async throws -> String {
+        return try await fridaAsync(String.self) { op in
+            let rawData = Marshal.bytesFromArray(data)
+            let options = frida_pattern_decode_options_new()!
+            if let inputs = inputs {
+                let rawInputs = Marshal.parametersDictFromDictionary(inputs)
+                frida_pattern_decode_options_set_inputs(options, rawInputs)
+                g_hash_table_unref(rawInputs)
+            }
+            frida_pattern_module_call_function(self.handle, typeName, rawData, guint64(address), guint(pattern), function, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<String>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                let rawResult = frida_pattern_module_call_function_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(String(cString: rawResult!))
+            }, op.userData)
+            g_bytes_unref(rawData)
+            g_object_unref(gpointer(options))
+        }
+    }
+
+    public func lookup(name: String) -> PatternType? {
+        guard let raw = frida_pattern_module_lookup(handle, name) else {
+        return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternType(handle: raw)
+    }
+
+    public var description: String {
+        return "Frida.PatternModule()"
+    }
+
+    public static func == (lhs: PatternModule, rhs: PatternModule) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternInput: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_input_get_name(handle))
+    }
+
+    public var typeRef: PatternTypeRef? {
+        guard let raw = frida_pattern_input_get_type_ref(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var description: String {
+        return "Frida.PatternInput(name: \"\(name)\")"
+    }
+
+    public static func == (lhs: PatternInput, rhs: PatternInput) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternType: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var kind: PatternTypeKind {
+        return PatternTypeKind(rawValue: numericCast(frida_pattern_type_get_kind(handle).rawValue))!
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_type_get_name(handle))
+    }
+
+    public var doc: String? {
+        if let raw = frida_pattern_type_get_doc(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var file: String? {
+        if let raw = frida_pattern_type_get_file(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var line: UInt {
+        return UInt(frida_pattern_type_get_line(handle))
+    }
+
+    public var character: UInt {
+        return UInt(frida_pattern_type_get_character(handle))
+    }
+
+    public var size: Int64 {
+        return Int64(frida_pattern_type_get_size(handle))
+    }
+
+    public var align: UInt {
+        return UInt(frida_pattern_type_get_align(handle))
+    }
+
+    public var fields: [PatternField] {
+        let raw = frida_pattern_type_get_fields(handle)!
+        var items: [PatternField] = []
+        for i in 0..<frida_pattern_field_list_size(raw) {
+            items.append(PatternField(handle: frida_pattern_field_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var underlying: PatternTypeRef? {
+        guard let raw = frida_pattern_type_get_underlying(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var values: [PatternEnumValue] {
+        let raw = frida_pattern_type_get_values(handle)!
+        var items: [PatternEnumValue] = []
+        for i in 0..<frida_pattern_enum_value_list_size(raw) {
+            items.append(PatternEnumValue(handle: frida_pattern_enum_value_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var bits: [PatternBit] {
+        let raw = frida_pattern_type_get_bits(handle)!
+        var items: [PatternBit] = []
+        for i in 0..<frida_pattern_bit_list_size(raw) {
+            items.append(PatternBit(handle: frida_pattern_bit_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var target: PatternTypeRef? {
+        guard let raw = frida_pattern_type_get_target(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var description: String {
+        return "Frida.PatternType(kind: \(kind), name: \"\(name)\", line: \(line), character: \(character), size: \(size), align: \(align))"
+    }
+
+    public static func == (lhs: PatternType, rhs: PatternType) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternField: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_field_get_name(handle))
+    }
+
+    public var doc: String? {
+        if let raw = frida_pattern_field_get_doc(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var hidden: Bool {
+        return frida_pattern_field_get_hidden(handle) != 0
+    }
+
+    public var conditional: Bool {
+        return frida_pattern_field_get_conditional(handle) != 0
+    }
+
+    public var noUniqueAddress: Bool {
+        return frida_pattern_field_get_no_unique_address(handle) != 0
+    }
+
+    public var typeRef: PatternTypeRef {
+        let raw = frida_pattern_field_get_type_ref(handle)!
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var offset: Int64 {
+        return Int64(frida_pattern_field_get_offset(handle))
+    }
+
+    public var size: Int64 {
+        return Int64(frida_pattern_field_get_size(handle))
+    }
+
+    public var description: String {
+        return "Frida.PatternField(name: \"\(name)\", hidden: \(hidden), conditional: \(conditional), noUniqueAddress: \(noUniqueAddress), offset: \(offset), size: \(size))"
+    }
+
+    public static func == (lhs: PatternField, rhs: PatternField) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternTypeRef: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var kind: PatternTypeRefKind {
+        return PatternTypeRefKind(rawValue: numericCast(frida_pattern_type_ref_get_kind(handle).rawValue))!
+    }
+
+    public var display: String {
+        return String(cString: frida_pattern_type_ref_get_display(handle))
+    }
+
+    public var name: String? {
+        if let raw = frida_pattern_type_ref_get_name(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var order: PatternByteOrder {
+        return PatternByteOrder(rawValue: numericCast(frida_pattern_type_ref_get_order(handle).rawValue))!
+    }
+
+    public var target: PatternTypeRef? {
+        guard let raw = frida_pattern_type_ref_get_target(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var width: PatternTypeRef? {
+        guard let raw = frida_pattern_type_ref_get_width(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var element: PatternTypeRef? {
+        guard let raw = frida_pattern_type_ref_get_element(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternTypeRef(handle: raw)
+    }
+
+    public var length: Int64 {
+        return Int64(frida_pattern_type_ref_get_length(handle))
+    }
+
+    public var nullTerminated: Bool {
+        return frida_pattern_type_ref_get_null_terminated(handle) != 0
+    }
+
+    public var size: Int64 {
+        return Int64(frida_pattern_type_ref_get_size(handle))
+    }
+
+    public var description: String {
+        return "Frida.PatternTypeRef(kind: \(kind), display: \"\(display)\", order: \(order), length: \(length), nullTerminated: \(nullTerminated), size: \(size))"
+    }
+
+    public static func == (lhs: PatternTypeRef, rhs: PatternTypeRef) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternEnumValue: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_enum_value_get_name(handle))
+    }
+
+    public var doc: String? {
+        if let raw = frida_pattern_enum_value_get_doc(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var value: Int64 {
+        return Int64(frida_pattern_enum_value_get_value(handle))
+    }
+
+    public var last: Int64 {
+        return Int64(frida_pattern_enum_value_get_last(handle))
+    }
+
+    public var description: String {
+        return "Frida.PatternEnumValue(name: \"\(name)\", value: \(value), last: \(last))"
+    }
+
+    public static func == (lhs: PatternEnumValue, rhs: PatternEnumValue) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternBit: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_bit_get_name(handle))
+    }
+
+    public var doc: String? {
+        if let raw = frida_pattern_bit_get_doc(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var kind: PatternBitKind {
+        return PatternBitKind(rawValue: numericCast(frida_pattern_bit_get_kind(handle).rawValue))!
+    }
+
+    public var offset: UInt {
+        return UInt(frida_pattern_bit_get_offset(handle))
+    }
+
+    public var bits: UInt {
+        return UInt(frida_pattern_bit_get_bits(handle))
+    }
+
+    public var enumName: String? {
+        if let raw = frida_pattern_bit_get_enum_name(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var description: String {
+        return "Frida.PatternBit(name: \"\(name)\", kind: \(kind), offset: \(offset), bits: \(bits))"
+    }
+
+    public static func == (lhs: PatternBit, rhs: PatternBit) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternDiagnostic: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var line: UInt {
+        return UInt(frida_pattern_diagnostic_get_line(handle))
+    }
+
+    public var character: UInt {
+        return UInt(frida_pattern_diagnostic_get_character(handle))
+    }
+
+    public var message: String {
+        return String(cString: frida_pattern_diagnostic_get_message(handle))
+    }
+
+    public var description: String {
+        return "Frida.PatternDiagnostic(line: \(line), character: \(character), message: \"\(message)\")"
+    }
+
+    public static func == (lhs: PatternDiagnostic, rhs: PatternDiagnostic) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternValue: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var id: UInt {
+        return UInt(frida_pattern_value_get_id(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_value_get_name(handle))
+    }
+
+    public var typeName: String {
+        return String(cString: frida_pattern_value_get_type_name(handle))
+    }
+
+    public var address: UInt64 {
+        return UInt64(frida_pattern_value_get_address(handle))
+    }
+
+    public var offset: UInt64 {
+        return UInt64(frida_pattern_value_get_offset(handle))
+    }
+
+    public var size: Int64 {
+        return Int64(frida_pattern_value_get_size(handle))
+    }
+
+    public var value: Any? {
+        guard let raw = frida_pattern_value_get_value(handle) else {
+            return nil
+        }
+        let value = Marshal.valueFromVariant(raw)
+        return value
+    }
+
+    public var label: String? {
+        if let raw = frida_pattern_value_get_label(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var displayName: String? {
+        if let raw = frida_pattern_value_get_display_name(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var formatted: String? {
+        if let raw = frida_pattern_value_get_formatted(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var comment: String? {
+        if let raw = frida_pattern_value_get_comment(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var color: String? {
+        if let raw = frida_pattern_value_get_color(handle) {
+            return String(cString: raw)
+        }
+        return nil
+    }
+
+    public var hidden: Bool {
+        return frida_pattern_value_get_hidden(handle) != 0
+    }
+
+    public var inlined: Bool {
+        return frida_pattern_value_get_inlined(handle) != 0
+    }
+
+    public var sealed: Bool {
+        return frida_pattern_value_get_sealed(handle) != 0
+    }
+
+    public var bitOffset: Int {
+        return Int(frida_pattern_value_get_bit_offset(handle))
+    }
+
+    public var bits: UInt {
+        return UInt(frida_pattern_value_get_bits(handle))
+    }
+
+    public var count: Int64 {
+        return Int64(frida_pattern_value_get_count(handle))
+    }
+
+    public var fields: [PatternValue] {
+        let raw = frida_pattern_value_get_fields(handle)!
+        var items: [PatternValue] = []
+        for i in 0..<frida_pattern_value_list_size(raw) {
+            items.append(PatternValue(handle: frida_pattern_value_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var elements: [PatternValue] {
+        let raw = frida_pattern_value_get_elements(handle)!
+        var items: [PatternValue] = []
+        for i in 0..<frida_pattern_value_list_size(raw) {
+            items.append(PatternValue(handle: frida_pattern_value_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public var truncated: Bool {
+        return frida_pattern_value_get_truncated(handle) != 0
+    }
+
+    public var section: UInt64 {
+        return UInt64(frida_pattern_value_get_section(handle))
+    }
+
+    public var visualizer: PatternVisualizer? {
+        guard let raw = frida_pattern_value_get_visualizer(handle) else {
+            return nil
+        }
+        g_object_ref(gpointer(raw))
+        return PatternVisualizer(handle: raw)
+    }
+
+    public func toVariant() -> Any? {
+        guard let raw = frida_pattern_value_to_variant(handle) else {
+        return nil
+        }
+        let value = Marshal.valueFromVariant(raw)
+        g_variant_unref(raw)
+        return value
+    }
+
+    public var description: String {
+        return "Frida.PatternValue(id: \(id), name: \"\(name)\", typeName: \"\(typeName)\", address: \(address), offset: \(offset), size: \(size), hidden: \(hidden), inlined: \(inlined), sealed: \(sealed), bitOffset: \(bitOffset), bits: \(bits), count: \(count), truncated: \(truncated), section: \(section))"
+    }
+
+    public static func == (lhs: PatternValue, rhs: PatternValue) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternVisualizer: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_pattern_visualizer_get_name(handle))
+    }
+
+    public var presentation: PatternVisualizerPresentation {
+        return PatternVisualizerPresentation(rawValue: numericCast(frida_pattern_visualizer_get_presentation(handle).rawValue))!
+    }
+
+    public var arguments: [PatternVisualizerArgument] {
+        let raw = frida_pattern_visualizer_get_arguments(handle)!
+        var items: [PatternVisualizerArgument] = []
+        for i in 0..<frida_pattern_visualizer_argument_list_size(raw) {
+            items.append(PatternVisualizerArgument(handle: frida_pattern_visualizer_argument_list_get(raw, i)))
+        }
+        return items
+    }
+
+    public func toVariant() -> Any? {
+        guard let raw = frida_pattern_visualizer_to_variant(handle) else {
+        return nil
+        }
+        let value = Marshal.valueFromVariant(raw)
+        g_variant_unref(raw)
+        return value
+    }
+
+    public var description: String {
+        return "Frida.PatternVisualizer(name: \"\(name)\", presentation: \(presentation))"
+    }
+
+    public static func == (lhs: PatternVisualizer, rhs: PatternVisualizer) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class PatternVisualizerArgument: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var kind: PatternVisualizerArgumentKind {
+        return PatternVisualizerArgumentKind(rawValue: numericCast(frida_pattern_visualizer_argument_get_kind(handle).rawValue))!
+    }
+
+    public var value: Any? {
+        guard let raw = frida_pattern_visualizer_argument_get_value(handle) else {
+            return nil
+        }
+        let value = Marshal.valueFromVariant(raw)
+        return value
+    }
+
+    public var pattern: UInt {
+        return UInt(frida_pattern_visualizer_argument_get_pattern(handle))
+    }
+
+    public var address: UInt64 {
+        return UInt64(frida_pattern_visualizer_argument_get_address(handle))
+    }
+
+    public var size: Int64 {
+        return Int64(frida_pattern_visualizer_argument_get_size(handle))
+    }
+
+    public var data: [UInt8]? {
+        return Marshal.arrayFromBytes(frida_pattern_visualizer_argument_get_data(handle))
+    }
+
+    public func toVariant() -> Any? {
+        guard let raw = frida_pattern_visualizer_argument_to_variant(handle) else {
+        return nil
+        }
+        let value = Marshal.valueFromVariant(raw)
+        g_variant_unref(raw)
+        return value
+    }
+
+    public var description: String {
+        return "Frida.PatternVisualizerArgument(kind: \(kind), pattern: \(pattern), address: \(address), size: \(size))"
+    }
+
+    public static func == (lhs: PatternVisualizerArgument, rhs: PatternVisualizerArgument) -> Bool {
         return lhs.handle == rhs.handle
     }
 

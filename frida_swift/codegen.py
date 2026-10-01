@@ -842,8 +842,8 @@ def expand_options(param: Parameter, model: Model):
     Returns (signature_fragments, pre_lines, post_lines). The pre_lines build a
     local `options` GObject from whichever setters were supplied; post_lines
     unref it. Setters whose value types are not marshalable here (TLS
-    certificates, Relay objects, aux vardicts) are omitted and remain the
-    province of a later hand-written facade.
+    certificates, Relay objects) are omitted and remain the province of a
+    later hand-written facade.
     """
     from .model import options_object_type
 
@@ -959,6 +959,15 @@ def _scalar_setter(setter, arg, param, model, target="options"):
             f"if let {raw} = {raw} {{",
             f"    {call}({target}, {raw})",
             f"    g_bytes_unref({raw})",
+            f"}}",
+        ]
+    if tag == "vardict":
+        raw = f"raw{arg[0].upper()}{arg[1:]}"
+        return arg, "[String: Any]?", [
+            f"if let {arg} = {arg} {{",
+            f"    let {raw} = Marshal.parametersDictFromDictionary({arg})",
+            f"    {call}({target}, {raw})",
+            f"    g_hash_table_unref({raw})",
             f"}}",
         ]
     if tag == "scalar":
