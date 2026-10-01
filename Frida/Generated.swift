@@ -4461,7 +4461,9 @@ public final class Compiler: @unchecked Sendable, CustomStringConvertible, Equat
                     return
                 }
 
-                op.resumeSuccess(String(cString: rawResult!))
+                let value = String(cString: rawResult!)
+                g_free(rawResult)
+                op.resumeSuccess(value)
             }, op.userData)
             g_object_unref(gpointer(options))
         }
@@ -4807,7 +4809,9 @@ public final class PatternModule: @unchecked Sendable, CustomStringConvertible, 
                     return
                 }
 
-                op.resumeSuccess(String(cString: rawResult!))
+                let value = String(cString: rawResult!)
+                g_free(rawResult)
+                op.resumeSuccess(value)
             }, op.userData)
             g_bytes_unref(rawData)
             g_object_unref(gpointer(options))
@@ -4818,7 +4822,6 @@ public final class PatternModule: @unchecked Sendable, CustomStringConvertible, 
         guard let raw = frida_pattern_module_lookup(handle, name) else {
         return nil
         }
-        g_object_ref(gpointer(raw))
         return PatternType(handle: raw)
     }
 

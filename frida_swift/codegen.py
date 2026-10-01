@@ -637,6 +637,20 @@ def marshal_return(method: Method, kind: str, swift_type: str, call: str, nullab
         body = f"        return {swift_type}({call})"
     elif kind == "enum":
         body = f"        return {swift_type}(rawValue: numericCast({call}.rawValue))!"
+    elif kind == "string" and returns_owned(method):
+        if nullable:
+            swift_type += "?"
+            body = (f"        guard let raw = {call} else {{\n"
+                    f"            return nil\n"
+                    f"        }}\n"
+                    f"        let value = String(cString: raw)\n"
+                    f"        g_free(raw)\n"
+                    f"        return value")
+        else:
+            body = (f"        let raw = {call}!\n"
+                    f"        let value = String(cString: raw)\n"
+                    f"        g_free(raw)\n"
+                    f"        return value")
     elif kind == "string":
         if nullable:
             swift_type += "?"
@@ -683,21 +697,27 @@ def marshal_return(method: Method, kind: str, swift_type: str, call: str, nullab
                 f"        }}\n"
                 f"        return items")
     elif kind == "object":
+        take_ref = ("" if returns_owned(method)
+                    else "        g_object_ref(gpointer(raw))\n")
         if nullable:
             swift_type += "?"
             body = (f"        guard let raw = {call} else {{\n"
                     f"            return nil\n"
                     f"        }}\n"
-                    f"        g_object_ref(gpointer(raw))\n"
+                    f"{take_ref}"
                     f"        return {swift_type.rstrip('?')}(handle: raw)")
         else:
             body = (f"        let raw = {call}!\n"
-                    f"        g_object_ref(gpointer(raw))\n"
+                    f"{take_ref}"
                     f"        return {swift_type}(handle: raw)")
     else:
         raise AssertionError(kind)
 
     return swift_type, body
+
+
+def returns_owned(method: Method) -> bool:
+    return method.return_value.transfer_ownership != TransferOwnership.none
 
 
 def generate_async_method(otype: ObjectType, method: Method, model: Model) -> str:
@@ -1093,6 +1113,15 @@ def generate_success(method: Method, kind: str, swift_ret: str, model: Model) ->
     if kind == "enum":
         base = swift_ret.rstrip("?")
         return f"                op.resumeSuccess({base}(rawValue: numericCast(rawResult.rawValue))!)"
+    if kind == "string" and returns_owned(method):
+        if nullable:
+            return ("                let value = "
+                    "rawResult.map { String(cString: $0) }\n"
+                    "                g_free(rawResult)\n"
+                    "                op.resumeSuccess(value)")
+        return ("                let value = String(cString: rawResult!)\n"
+                "                g_free(rawResult)\n"
+                "                op.resumeSuccess(value)")
     if kind == "string":
         if nullable:
             return ("                op.resumeSuccess(rawResult != nil ? String(cString: rawResult!) : nil)")
