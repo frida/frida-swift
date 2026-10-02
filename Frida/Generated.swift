@@ -4513,6 +4513,58 @@ public final class Compiler: @unchecked Sendable, CustomStringConvertible, Equat
         }
     }
 
+    public func buildLibrary(entrypoint: String, outputDir: String, projectRoot: String? = nil, sourceMaps: SourceMaps? = nil) async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            let options = frida_library_options_new()!
+            if let projectRoot = projectRoot {
+                frida_library_options_set_project_root(options, projectRoot)
+            }
+            if let sourceMaps = sourceMaps {
+                frida_library_options_set_source_maps(options, FridaSourceMaps(numericCast(sourceMaps.rawValue)))
+            }
+            frida_compiler_build_library(self.handle, entrypoint, outputDir, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_compiler_build_library_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+            g_object_unref(gpointer(options))
+        }
+    }
+
+    public func watchLibrary(entrypoint: String, outputDir: String, projectRoot: String? = nil, sourceMaps: SourceMaps? = nil) async throws -> Void {
+        return try await fridaAsync(Void.self) { op in
+            let options = frida_library_options_new()!
+            if let projectRoot = projectRoot {
+                frida_library_options_set_project_root(options, projectRoot)
+            }
+            if let sourceMaps = sourceMaps {
+                frida_library_options_set_source_maps(options, FridaSourceMaps(numericCast(sourceMaps.rawValue)))
+            }
+            frida_compiler_watch_library(self.handle, entrypoint, outputDir, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+                let op = InternalOp<Void>.takeRetained(from: userData!)
+
+                var rawError: UnsafeMutablePointer<GError>? = nil
+                frida_compiler_watch_library_finish(OpaquePointer(sourcePtr), asyncResultPtr, &rawError)
+
+                if let rawError {
+                    op.resumeFailure(Marshal.takeNativeError(rawError))
+                    return
+                }
+
+                op.resumeSuccess(())
+            }, op.userData)
+            g_object_unref(gpointer(options))
+        }
+    }
+
     public var description: String {
         return "Frida.Compiler()"
     }
