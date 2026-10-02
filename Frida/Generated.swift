@@ -4678,16 +4678,19 @@ public final class PatternCompiler: @unchecked Sendable, CustomStringConvertible
         g_object_unref(gpointer(handle))
     }
 
-    public func compile(source: String, platform: String? = nil, arch: String? = nil) async throws -> PatternModule {
+    public func compile(entrypoint: String, projectRoot: String? = nil, platform: String? = nil, arch: String? = nil) async throws -> PatternModule {
         return try await fridaAsync(PatternModule.self) { op in
             let options = frida_pattern_compile_options_new()!
+            if let projectRoot = projectRoot {
+                frida_pattern_compile_options_set_project_root(options, projectRoot)
+            }
             if let platform = platform {
                 frida_pattern_compile_options_set_platform(options, platform)
             }
             if let arch = arch {
                 frida_pattern_compile_options_set_arch(options, arch)
             }
-            frida_pattern_compiler_compile(self.handle, source, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
+            frida_pattern_compiler_compile(self.handle, entrypoint, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<PatternModule>.takeRetained(from: userData!)
 
                 var rawError: UnsafeMutablePointer<GError>? = nil
@@ -4900,11 +4903,8 @@ public final class PatternType: @unchecked Sendable, CustomStringConvertible, Eq
         return nil
     }
 
-    public var file: String? {
-        if let raw = frida_pattern_type_get_file(handle) {
-            return String(cString: raw)
-        }
-        return nil
+    public var file: String {
+        return String(cString: frida_pattern_type_get_file(handle))
     }
 
     public var line: UInt {
@@ -4967,7 +4967,7 @@ public final class PatternType: @unchecked Sendable, CustomStringConvertible, Eq
     }
 
     public var description: String {
-        return "Frida.PatternType(kind: \(kind), name: \"\(name)\", line: \(line), character: \(character), size: \(size), align: \(align))"
+        return "Frida.PatternType(kind: \(kind), name: \"\(name)\", file: \"\(file)\", line: \(line), character: \(character), size: \(size), align: \(align))"
     }
 
     public static func == (lhs: PatternType, rhs: PatternType) -> Bool {
@@ -5227,6 +5227,10 @@ public final class PatternDiagnostic: @unchecked Sendable, CustomStringConvertib
         g_object_unref(gpointer(handle))
     }
 
+    public var file: String {
+        return String(cString: frida_pattern_diagnostic_get_file(handle))
+    }
+
     public var line: UInt {
         return UInt(frida_pattern_diagnostic_get_line(handle))
     }
@@ -5240,7 +5244,7 @@ public final class PatternDiagnostic: @unchecked Sendable, CustomStringConvertib
     }
 
     public var description: String {
-        return "Frida.PatternDiagnostic(line: \(line), character: \(character), message: \"\(message)\")"
+        return "Frida.PatternDiagnostic(file: \"\(file)\", line: \(line), character: \(character), message: \"\(message)\")"
     }
 
     public static func == (lhs: PatternDiagnostic, rhs: PatternDiagnostic) -> Bool {
