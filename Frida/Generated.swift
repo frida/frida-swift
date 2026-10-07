@@ -4730,7 +4730,7 @@ public final class PatternCompiler: @unchecked Sendable, CustomStringConvertible
         g_object_unref(gpointer(handle))
     }
 
-    public func compile(entrypoint: String, projectRoot: String? = nil, platform: String? = nil, arch: String? = nil) async throws -> PatternModule {
+    public func compile(entrypoint: String, projectRoot: String? = nil, platform: String? = nil, arch: String? = nil, defines: [String: Any]? = nil) async throws -> PatternModule {
         return try await fridaAsync(PatternModule.self) { op in
             let options = frida_pattern_compile_options_new()!
             if let projectRoot = projectRoot {
@@ -4741,6 +4741,11 @@ public final class PatternCompiler: @unchecked Sendable, CustomStringConvertible
             }
             if let arch = arch {
                 frida_pattern_compile_options_set_arch(options, arch)
+            }
+            if let defines = defines {
+                let rawDefines = Marshal.parametersDictFromDictionary(defines)
+                frida_pattern_compile_options_set_defines(options, rawDefines)
+                g_hash_table_unref(rawDefines)
             }
             frida_pattern_compiler_compile(self.handle, entrypoint, options, op.cancellable, { sourcePtr, asyncResultPtr, userData in
                 let op = InternalOp<PatternModule>.takeRetained(from: userData!)
