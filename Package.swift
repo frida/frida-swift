@@ -13,8 +13,8 @@ if ProcessInfo.processInfo.environment["USE_SYSTEM_FRIDA"] != nil {
 } else {
     fridaCoreTarget = .binaryTarget(
         name: "FridaCore",
-        url: "https://github.com/frida/frida-core/releases/download/17.24.3/FridaCore.xcframework.zip",
-        checksum: "f799f86cc9e87340470d6a10ba521f4274523642a675805da325952b081fb161"
+        url: "https://github.com/frida/frida-core/releases/download/17.25.0/FridaCore.xcframework.zip",
+        checksum: "8e0ada1b3c23c2c46ae7b49c39871dc6c4c55c0f8e5313625e247bbbfca05415"
     )
 }
 #else
