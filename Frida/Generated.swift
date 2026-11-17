@@ -1350,7 +1350,7 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
         }
     }
 
-    public func attach(pid: UInt, linkerNotifierOffsets: [UInt]? = nil, realm: Realm? = nil, persistTimeout: UInt? = nil, emulatedAgentPath: String? = nil, exceptor: Exceptor? = nil, unwindBroker: Bool? = nil, exitMonitor: Bool? = nil, threadSuspendMonitor: Bool? = nil) async throws -> Session {
+    public func attach(pid: UInt, linkerNotifierOffsets: [UInt]? = nil, realm: Realm? = nil, persistTimeout: UInt? = nil, emulatedAgentPath: String? = nil, gadgetPath: String? = nil, exceptor: Exceptor? = nil, unwindBroker: Bool? = nil, exitMonitor: Bool? = nil, threadSuspendMonitor: Bool? = nil) async throws -> Session {
         return try await fridaAsync(Session.self) { op in
             let options = frida_session_options_new()!
             for element in linkerNotifierOffsets ?? [] {
@@ -1364,6 +1364,9 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
             }
             if let emulatedAgentPath = emulatedAgentPath {
                 frida_session_options_set_emulated_agent_path(options, emulatedAgentPath)
+            }
+            if let gadgetPath = gadgetPath {
+                frida_session_options_set_gadget_path(options, gadgetPath)
             }
             if let exceptor = exceptor {
                 frida_session_options_set_exceptor(options, FridaExceptor(numericCast(exceptor.rawValue)))
@@ -2295,6 +2298,52 @@ public final class BareboneSerialTransportConfig: BareboneInjectingTransportConf
 
     public override var description: String {
         return "Frida.BareboneSerialTransportConfig(path: \"\(path)\")"
+    }
+
+}
+
+public final class BareboneUartTransportConfig: BareboneInjectingTransportConfig {
+
+    override init(handle: OpaquePointer) {
+        super.init(handle: handle)
+    }
+
+    public convenience init(path: String? = nil, mmio: UInt64? = nil, irq: UInt? = nil, interruptParent: UInt? = nil) {
+        Runtime.ensureInitialized()
+        let handle = frida_barebone_uart_transport_config_new()!
+        if let path = path {
+            frida_barebone_uart_transport_config_set_path(handle, path)
+        }
+        if let mmio = mmio {
+            frida_barebone_uart_transport_config_set_mmio(handle, guint64(mmio))
+        }
+        if let irq = irq {
+            frida_barebone_uart_transport_config_set_irq(handle, guint(irq))
+        }
+        if let interruptParent = interruptParent {
+            frida_barebone_uart_transport_config_set_interrupt_parent(handle, guint(interruptParent))
+        }
+        self.init(handle: handle)
+    }
+
+    public var path: String {
+        return String(cString: frida_barebone_uart_transport_config_get_path(handle))
+    }
+
+    public var mmio: UInt64 {
+        return UInt64(frida_barebone_uart_transport_config_get_mmio(handle))
+    }
+
+    public var irq: UInt {
+        return UInt(frida_barebone_uart_transport_config_get_irq(handle))
+    }
+
+    public var interruptParent: UInt {
+        return UInt(frida_barebone_uart_transport_config_get_interrupt_parent(handle))
+    }
+
+    public override var description: String {
+        return "Frida.BareboneUartTransportConfig(path: \"\(path)\", mmio: \(mmio), irq: \(irq), interruptParent: \(interruptParent))"
     }
 
 }
@@ -4073,6 +4122,55 @@ public final class PackageInstallResult: @unchecked Sendable, CustomStringConver
     }
 
     public static func == (lhs: PackageInstallResult, rhs: PackageInstallResult) -> Bool {
+        return lhs.handle == rhs.handle
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(UInt(bitPattern: handle))
+    }
+}
+
+public final class BinaryMetadata: CustomStringConvertible, Equatable, Hashable {
+    let handle: OpaquePointer
+
+    init(handle: OpaquePointer) {
+        self.handle = handle
+    }
+
+    public convenience init(path: String) throws {
+        Runtime.ensureInitialized()
+        var rawError: UnsafeMutablePointer<GError>? = nil
+        let handle = frida_binary_metadata_from_file(path, &rawError)
+        if let rawError {
+            throw Marshal.takeNativeError(rawError)
+        }
+        self.init(handle: handle!)
+    }
+
+    deinit {
+        g_object_unref(gpointer(handle))
+    }
+
+    public var name: String {
+        return String(cString: frida_binary_metadata_get_name(handle))
+    }
+
+    public var version: String {
+        return String(cString: frida_binary_metadata_get_version(handle))
+    }
+
+    public var architectures: [String]? {
+        guard let raw = frida_binary_metadata_get_architectures(handle, nil) else {
+            return nil
+        }
+        return Marshal.arrayFromStrv(raw)
+    }
+
+    public var description: String {
+        return "Frida.BinaryMetadata(name: \"\(name)\", version: \"\(version)\")"
+    }
+
+    public static func == (lhs: BinaryMetadata, rhs: BinaryMetadata) -> Bool {
         return lhs.handle == rhs.handle
     }
 
