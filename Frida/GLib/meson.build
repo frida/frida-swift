@@ -1,6 +1,7 @@
 glib_sources = files(
   'DateTime.swift',
   'DBusConnection.swift',
+  'Environment.swift',
   'File.swift',
   'GLib.swift',
   'IOStream.swift',
