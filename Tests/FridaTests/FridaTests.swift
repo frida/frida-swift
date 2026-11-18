@@ -293,6 +293,25 @@ final class FridaTests: XCTestCase {
 
     // 16b. Options expand into labeled args (spawn-style), built inline into
     // the Frida*Options GObject; a bad build maps to a typed error.
+    func testJSONKeepsNumbersApartFromBooleans() throws {
+        let parsed = try JSONSerialization.jsonObject(with: Data(#"{"zero":0,"one":1,"no":false,"yes":true,"whole":1.0}"#.utf8))
+        let roundTripped = try JSONGLib.value(from: JSONGLib.string(from: parsed)) as! [String: Any]
+
+        XCTAssertEqual(roundTripped["zero"] as? Int, 0)
+        XCTAssertEqual(roundTripped["one"] as? Int, 1)
+        XCTAssertEqual(roundTripped["no"] as? Bool, false)
+        XCTAssertEqual(roundTripped["yes"] as? Bool, true)
+        XCTAssertEqual(roundTripped["whole"] as? Double, 1.0)
+        XCTAssertNil(roundTripped["zero"] as? Bool)
+        XCTAssertNil(roundTripped["no"] as? Int)
+    }
+
+    func testDeviceBusIsOneObject() async throws {
+        try await withLocalDevice { device in
+            XCTAssertTrue(device.bus === device.bus)
+        }
+    }
+
     func testCompilerBuildOptionsExpansion() async throws {
         let compiler = Compiler()
         do {
