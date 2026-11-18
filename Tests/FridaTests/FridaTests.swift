@@ -1,6 +1,11 @@
+import Foundation
 import FridaCore
 import XCTest
 @testable import Frida
+
+#if canImport(FoundationNetworking)
+import FoundationNetworking
+#endif
 
 // End-to-end tests exercising the generated bindings against the local device
 // (an agent living inside frida-core). No external target is required; the
@@ -382,7 +387,7 @@ final class FridaTests: XCTestCase {
     }
 
     private func freePort() -> UInt16 {
-        let fd = socket(AF_INET, SOCK_STREAM, 0)
+        let fd = socket(AF_INET, streamSocket, 0)
         defer { close(fd) }
         var addr = sockaddr_in()
         addr.sin_family = sa_family_t(AF_INET)
@@ -390,7 +395,7 @@ final class FridaTests: XCTestCase {
         addr.sin_addr.s_addr = inet_addr("127.0.0.1")
         _ = withUnsafeMutablePointer(to: &addr) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) {
-                Darwin.bind(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
+                bindSocket(fd, $0, socklen_t(MemoryLayout<sockaddr_in>.size))
             }
         }
         var bound = sockaddr_in()
@@ -403,3 +408,11 @@ final class FridaTests: XCTestCase {
         return UInt16(bigEndian: bound.sin_port)
     }
 }
+
+#if canImport(Darwin)
+private let streamSocket = SOCK_STREAM
+private let bindSocket = Darwin.bind
+#else
+private let streamSocket = Int32(SOCK_STREAM.rawValue)
+private let bindSocket = Glibc.bind
+#endif
