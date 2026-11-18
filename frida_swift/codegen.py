@@ -270,16 +270,16 @@ def is_held_child(method: Method, model: Model) -> bool:
     return bool(child.generate_signals and child.emitted_signals)
 
 
-def held_child_type(method: Method, model: Model) -> str:
-    return model.swift_class_for(method.return_value.type.name).swift_name
-
-
 def hold_child(method: Method, model: Model) -> str:
     name = method.property_name
     raw = "raw" + to_pascal(name)
     return (f"        let {raw} = {method.c_identifier}(handle)!\n"
             f"        g_object_ref(gpointer({raw}))\n"
             f"        {name} = {held_child_type(method, model)}(handle: {raw})")
+
+
+def held_child_type(method: Method, model: Model) -> str:
+    return model.swift_class_for(method.return_value.type.name).swift_name
 
 
 def generate_public_init(otype: ObjectType, model: Model) -> str:
