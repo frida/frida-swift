@@ -146,7 +146,11 @@ def generate_class(otype: ObjectType, model: Model) -> str:
     if otype.emitted_parent is not None:
         inherited.add("description")
 
+    held_children = [m for m in otype.emitted_properties if is_held_child(m, model)]
+
     for method in otype.emitted_properties:
+        if method in held_children:
+            continue
         members.append(apply_override(generate_getter(method, model), method.property_name, inherited))
 
     for method in otype.emitted_async_methods:
@@ -197,12 +201,14 @@ def generate_class(otype: ObjectType, model: Model) -> str:
     stored = ""
     if parent is None:
         stored += "    let handle: OpaquePointer\n"
+    for method in held_children:
+        stored += f"    public let {method.property_name}: {held_child_type(method, model)}\n"
     if signals:
         stored += "    private let eventSource = AsyncEventSource<Event>()\n"
 
     public_init = generate_public_init(otype, model)
 
-    init_lines = []
+    init_lines = [hold_child(method, model) for method in held_children]
     if parent is None:
         init_lines.append("        self.handle = handle")
     else:
@@ -253,6 +259,27 @@ def generate_class(otype: ObjectType, model: Model) -> str:
 {init_body}    }}
 {public_init}{deinit_section}
 {body}{equatable_section}}}"""
+
+
+def is_held_child(method: Method, model: Model) -> bool:
+    rv = method.return_value
+    kind, _ = swift_return_kind(rv.type, model)
+    if kind != "object" or rv.nullable or returns_owned(method):
+        return False
+    child = model.swift_class_for(rv.type.name)
+    return bool(child.generate_signals and child.emitted_signals)
+
+
+def held_child_type(method: Method, model: Model) -> str:
+    return model.swift_class_for(method.return_value.type.name).swift_name
+
+
+def hold_child(method: Method, model: Model) -> str:
+    name = method.property_name
+    raw = "raw" + to_pascal(name)
+    return (f"        let {raw} = {method.c_identifier}(handle)!\n"
+            f"        g_object_ref(gpointer({raw}))\n"
+            f"        {name} = {held_child_type(method, model)}(handle: {raw})")
 
 
 def generate_public_init(otype: ObjectType, model: Model) -> str:

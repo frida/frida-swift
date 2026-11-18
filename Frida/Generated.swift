@@ -883,9 +883,13 @@ actor DeviceStore {
 
 public final class Device: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable, Identifiable {
     let handle: OpaquePointer
+    public let bus: Bus
     private let eventSource = AsyncEventSource<Event>()
 
     init(handle: OpaquePointer) {
+        let rawBus = frida_device_get_bus(handle)!
+        g_object_ref(gpointer(rawBus))
+        bus = Bus(handle: rawBus)
         self.handle = handle
         connectSignal(instance: self, handle: handle, signal: "spawn-gating-disabled", handler: onSpawnGatingDisabled)
         connectSignal(instance: self, handle: handle, signal: "spawn-added", handler: onSpawnAdded)
@@ -940,12 +944,6 @@ public final class Device: @unchecked Sendable, CustomStringConvertible, Equatab
 
     public var type: DeviceType {
         return DeviceType(rawValue: numericCast(frida_device_get_dtype(handle).rawValue))!
-    }
-
-    public var bus: Bus {
-        let raw = frida_device_get_bus(handle)!
-        g_object_ref(gpointer(raw))
-        return Bus(handle: raw)
     }
 
     public func querySystemParameters() async throws -> [String: Any] {
@@ -4181,8 +4179,12 @@ public final class BinaryMetadata: CustomStringConvertible, Equatable, Hashable 
 
 public final class PortalService: @unchecked Sendable, CustomStringConvertible, Equatable, Hashable {
     let handle: OpaquePointer
+    public let device: Device
 
     init(handle: OpaquePointer) {
+        let rawDevice = frida_portal_service_get_device(handle)!
+        g_object_ref(gpointer(rawDevice))
+        device = Device(handle: rawDevice)
         self.handle = handle
         connectSignal(instance: self, handle: handle, signal: "authenticated", handler: onAuthenticated)
         connectSignal(instance: self, handle: handle, signal: "controller-connected", handler: onControllerConnected)
@@ -4198,12 +4200,6 @@ public final class PortalService: @unchecked Sendable, CustomStringConvertible, 
     deinit {
         eventSource.finish()
         g_object_unref(gpointer(handle))
-    }
-
-    public var device: Device {
-        let raw = frida_portal_service_get_device(handle)!
-        g_object_ref(gpointer(raw))
-        return Device(handle: raw)
     }
 
     public var clusterParameters: EndpointParameters {
