@@ -5,6 +5,8 @@ extension GLib {
         internal let handle: OpaquePointer
 
         public static func nowUTC() -> DateTime {
+            Runtime.ensureInitialized()
+
             return DateTime(handle: g_date_time_new_now_utc())
         }
 
@@ -12,6 +14,8 @@ extension GLib {
             iso8601 text: String,
             defaultTimeZone: GLib.TimeZone? = nil
         ) throws {
+            Runtime.ensureInitialized()
+
             guard let dt = g_date_time_new_from_iso8601(text, defaultTimeZone?.handle) else {
                 throw Error.invalidArgument("Invalid ISO-8601 date/time: \(text)")
             }

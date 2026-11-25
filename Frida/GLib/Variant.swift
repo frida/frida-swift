@@ -17,18 +17,26 @@ extension GLib {
         }
 
         public convenience init(_ value: UInt32) {
+            Runtime.ensureInitialized()
+
             self.init(adopting: g_variant_new_uint32(value))
         }
 
         public convenience init(_ value: Int32) {
+            Runtime.ensureInitialized()
+
             self.init(adopting: g_variant_new_int32(value))
         }
 
         public convenience init(_ value: String) {
+            Runtime.ensureInitialized()
+
             self.init(adopting: g_variant_new_string(value))
         }
 
         public convenience init(_ values: [String]) {
+            Runtime.ensureInitialized()
+
             let (strv, _) = Marshal.strvFromArray(values)
             defer { g_strfreev(strv) }
             self.init(adopting: UnsafePointer(strv!).withMemoryRebound(to: UnsafePointer<gchar>?.self, capacity: values.count) {
@@ -37,6 +45,8 @@ extension GLib {
         }
 
         public convenience init(bytes: [UInt8]) {
+            Runtime.ensureInitialized()
+
             var payload = bytes
             let elementType = g_variant_type_new("y")
             defer { g_variant_type_free(elementType) }
@@ -46,6 +56,8 @@ extension GLib {
         }
 
         public convenience init(tuple children: [Variant]) {
+            Runtime.ensureInitialized()
+
             var handles: [OpaquePointer?] = children.map(\.handle)
             let tuple = withExtendedLifetime(children) {
                 handles.withUnsafeMutableBufferPointer { handles in
@@ -56,7 +68,9 @@ extension GLib {
         }
 
         public static func fileDescriptor(at index: Int32) -> Variant {
-            Variant(adopting: g_variant_new_handle(index))
+            Runtime.ensureInitialized()
+
+            return Variant(adopting: g_variant_new_handle(index))
         }
 
         public var uint32: UInt32? {

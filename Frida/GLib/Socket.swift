@@ -21,6 +21,8 @@ extension GLib {
         }
 
         public convenience init(adopting fileDescriptor: Int32) throws {
+            Runtime.ensureInitialized()
+
             var rawError: UnsafeMutablePointer<GError>? = nil
             let handle = g_socket_new_from_fd(fileDescriptor, &rawError)
             if let rawError {
@@ -30,6 +32,8 @@ extension GLib {
         }
 
         public static func connect(unixPath: String) throws -> Socket {
+            Runtime.ensureInitialized()
+
             let address = g_unix_socket_address_new(unixPath)!
             defer { g_object_unref(gpointer(address)) }
 
@@ -49,6 +53,8 @@ extension GLib {
 
         #if os(Windows)
         public static func pair() throws -> (Socket, Socket) {
+            Runtime.ensureInitialized()
+
             let directory = String(cString: g_get_tmp_dir())
             let name = g_uuid_string_random()!
             defer { g_free(name) }

@@ -5,10 +5,14 @@ extension GLib {
         internal let handle: OpaquePointer
 
         public static func utc() -> TimeZone {
+            Runtime.ensureInitialized()
+
             return TimeZone(handle: g_time_zone_new_utc())
         }
 
         public convenience init(identifier: String) throws {
+            Runtime.ensureInitialized()
+
             guard let tz = g_time_zone_new_identifier(identifier) else {
                 throw Error.invalidArgument("Invalid timezone identifier: \(identifier)")
             }

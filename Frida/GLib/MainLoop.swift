@@ -5,6 +5,8 @@ extension GLib {
         internal let handle: OpaquePointer
 
         public init() {
+            Runtime.ensureInitialized()
+
             self.handle = g_main_loop_new(nil, 0)
         }
 
