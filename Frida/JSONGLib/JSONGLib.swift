@@ -5,6 +5,8 @@ import Foundation
 
 public enum JSONGLib {
     public static func string(from value: Any, pretty: Bool = false) throws -> String {
+        Runtime.ensureInitialized()
+
         let root = try makeNode(from: value)
         defer { json_node_free(root) }
 
@@ -16,6 +18,8 @@ public enum JSONGLib {
     }
 
     public static func value(from string: String) throws -> Any {
+        Runtime.ensureInitialized()
+
         var rawError: UnsafeMutablePointer<GError>? = nil
         guard let node = json_from_string(string, &rawError) else {
             throw Marshal.takeNativeError(rawError!)
